@@ -65,9 +65,10 @@ async function upsertAutomaticPendency(input: {
       processId: input.processId,
       documentId: input.documentId,
       type: input.type,
+      title: input.type.slice(0, 200),
       description: input.description,
       priority: input.priority ?? "MEDIA",
-      status: "ABERTA",
+      status: "OPEN",
       idempotencyKey,
     })
     .returning();

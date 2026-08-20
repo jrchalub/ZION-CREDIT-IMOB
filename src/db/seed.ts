@@ -1,20 +1,23 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import {
   clientAddresses,
   clients,
   correspondents,
   developments,
-  documentTypes,
   financingProcesses,
-  incomeProfileDocumentRequirements,
   processNumberSequences,
   processStatusHistory,
   tenants,
   units,
   users,
 } from "@/db/schema";
+import {
+  syncAllProcessChecklists,
+  upsertDocumentCatalog,
+} from "@/domain/documents/catalog";
 import { generateChecklistForProcess } from "@/domain/documents/checklist";
 
 async function hashPassword(password: string) {
@@ -22,161 +25,47 @@ async function hashPassword(password: string) {
 }
 
 async function seedDocumentCatalog() {
-  const existingTypes = await db.select().from(documentTypes).limit(1);
-  if (existingTypes.length > 0) {
-    console.log("Document types already seeded.");
-    return;
-  }
+  await upsertDocumentCatalog();
+  const synced = await syncAllProcessChecklists();
+  console.log(
+    `Document catalog upserted (anexos Caixa 1–12). Checklists sincronizados: ${synced}.`,
+  );
+}
 
-  const inserted = await db
-    .insert(documentTypes)
-    .values([
-      {
-        code: "RG_CPF",
-        name: "RG/CPF",
-        category: "IDENTIDADE",
-        description: "Documento de identificação (RG e/ou CPF)",
-      },
-      {
-        code: "CERTIDAO_ESTADO_CIVIL",
-        name: "Certidão de Estado Civil",
-        category: "IDENTIDADE",
-      },
-      {
-        code: "COMPROVANTE_ENDERECO",
-        name: "Comprovante de Endereço",
-        category: "RESIDENCIA",
-      },
-      {
-        code: "CTPS_DIGITAL",
-        name: "CTPS Digital",
-        category: "TRABALHO",
-      },
-      {
-        code: "EXTRATO_BANCARIO",
-        name: "Extrato bancário",
-        category: "FINANCEIRO",
-        allowsMultiple: true,
-        requiresCompetence: true,
-      },
-      {
-        code: "FATURA_CARTAO",
-        name: "Fatura de cartão",
-        category: "FINANCEIRO",
-        allowsMultiple: true,
-        requiresCompetence: true,
-      },
-      {
-        code: "CONTRACHEQUE",
-        name: "Contracheque",
-        category: "RENDA",
-        allowsMultiple: true,
-        requiresCompetence: true,
-      },
-    ])
-    .returning();
+async function ensureCorrespondentUserLinks() {
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, "corresp@zioncredit.demo"))
+    .limit(1);
+  if (!user || user.correspondentId) return;
 
-  const byCode = Object.fromEntries(inserted.map((t) => [t.code, t]));
+  const [org] = await db
+    .select()
+    .from(correspondents)
+    .where(
+      and(
+        eq(correspondents.tenantId, user.tenantId),
+        eq(correspondents.email, "corresp@zioncredit.demo"),
+      ),
+    )
+    .limit(1);
 
-  await db.insert(incomeProfileDocumentRequirements).values([
-    {
-      incomeProfile: "AUTONOMO",
-      documentTypeId: byCode.RG_CPF.id,
-      requirement: "OBRIGATORIO",
-      quantity: 1,
-      sortOrder: 10,
-      labelTemplate: "RG/CPF",
-    },
-    {
-      incomeProfile: "AUTONOMO",
-      documentTypeId: byCode.CERTIDAO_ESTADO_CIVIL.id,
-      requirement: "OBRIGATORIO",
-      quantity: 1,
-      sortOrder: 20,
-      labelTemplate: "Certidão de Estado Civil",
-    },
-    {
-      incomeProfile: "AUTONOMO",
-      documentTypeId: byCode.COMPROVANTE_ENDERECO.id,
-      requirement: "OBRIGATORIO",
-      quantity: 1,
-      sortOrder: 30,
-      labelTemplate: "Comprovante de Endereço",
-    },
-    {
-      incomeProfile: "AUTONOMO",
-      documentTypeId: byCode.CTPS_DIGITAL.id,
-      requirement: "OBRIGATORIO",
-      quantity: 1,
-      sortOrder: 40,
-      labelTemplate: "CTPS Digital",
-    },
-    {
-      incomeProfile: "AUTONOMO",
-      documentTypeId: byCode.EXTRATO_BANCARIO.id,
-      requirement: "OBRIGATORIO",
-      quantity: 3,
-      sortOrder: 50,
-      labelTemplate: "Extrato bancário — {competence}",
-    },
-    {
-      incomeProfile: "AUTONOMO",
-      documentTypeId: byCode.FATURA_CARTAO.id,
-      requirement: "CONDICIONAL",
-      quantity: 3,
-      sortOrder: 60,
-      labelTemplate: "Fatura cartão — {competence}",
-      conditionKey: "HAS_CREDIT_CARD",
-    },
-    {
-      incomeProfile: "CLT",
-      documentTypeId: byCode.RG_CPF.id,
-      requirement: "OBRIGATORIO",
-      quantity: 1,
-      sortOrder: 10,
-      labelTemplate: "RG/CPF",
-    },
-    {
-      incomeProfile: "CLT",
-      documentTypeId: byCode.CERTIDAO_ESTADO_CIVIL.id,
-      requirement: "OBRIGATORIO",
-      quantity: 1,
-      sortOrder: 20,
-      labelTemplate: "Certidão de Estado Civil",
-    },
-    {
-      incomeProfile: "CLT",
-      documentTypeId: byCode.COMPROVANTE_ENDERECO.id,
-      requirement: "OBRIGATORIO",
-      quantity: 1,
-      sortOrder: 30,
-      labelTemplate: "Comprovante de Endereço",
-    },
-    {
-      incomeProfile: "CLT",
-      documentTypeId: byCode.CTPS_DIGITAL.id,
-      requirement: "OBRIGATORIO",
-      quantity: 1,
-      sortOrder: 40,
-      labelTemplate: "CTPS Digital",
-    },
-    {
-      incomeProfile: "CLT",
-      documentTypeId: byCode.CONTRACHEQUE.id,
-      requirement: "OBRIGATORIO",
-      quantity: 2,
-      sortOrder: 50,
-      labelTemplate: "Contracheque — {competence}",
-    },
-  ]);
+  if (!org) return;
 
-  console.log("Document catalog seeded (AUTONOMO + CLT).");
+  await db
+    .update(users)
+    .set({ correspondentId: org.id, updatedAt: new Date() })
+    .where(and(eq(users.id, user.id), isNull(users.correspondentId)));
+
+  console.log("Linked corresp@zioncredit.demo → correspondent org.");
 }
 
 async function seed() {
   console.log("Seeding ZION CREDIT demo data...");
 
   await seedDocumentCatalog();
+  await ensureCorrespondentUserLinks();
 
   const existing = await db.select().from(tenants).limit(1);
   if (existing.length > 0) {
@@ -237,6 +126,11 @@ async function seed() {
       email: "corresp@zioncredit.demo",
     })
     .returning();
+
+  await db
+    .update(users)
+    .set({ correspondentId: correspondent.id, updatedAt: new Date() })
+    .where(eq(users.id, correspondente.id));
 
   const [development] = await db
     .insert(developments)

@@ -75,18 +75,18 @@ Acesse: [http://localhost:3000](http://localhost:3000)
 - [DOCUMENT_INTELLIGENCE.md](./docs/DOCUMENT_INTELLIGENCE.md)
 - [FINANCIAL_ANALYSIS.md](./docs/FINANCIAL_ANALYSIS.md)
 - [CREDIT_DECISION_SUPPORT.md](./docs/CREDIT_DECISION_SUPPORT.md)
+- [BASELINE_FASE_5.md](./docs/BASELINE_FASE_5.md)
+- [OPERATIONS.md](./docs/OPERATIONS.md)
 - [PHASES.md](./docs/PHASES.md)
 - [TESTING.md](./docs/TESTING.md)
 - [DEPLOYMENT.md](./docs/DEPLOYMENT.md)
 
 ## Roadmap
 
-1. FASE 1 — Foundation ✅
-2. FASE 2 — Documentos ✅ (tipos, upload MinIO, checklist, pendências, viewer)
+1. FASE 1 — Foundation ✅ **PRODUCTION CLOSED**
+2. FASE 2 — Documentos ✅ **PRODUCTION CLOSED**
 3. FASE 3 — Document Intelligence ✅ **PRODUCTION CLOSED**
-4. FASE 4 — Financeiro ✅ **PRODUCTION CLOSED** (snapshot imutável + hardening)
-5. FASE 5 — Credit Decision Support — **IN PROGRESS** (dossiê explicável + parecer)
-6. FASE 6 — Parecer
-7. FASE 7 — Portal do cliente
-8. FASE 8 — WhatsApp
-9. FASE 9 — Hardening
+4. FASE 4 — Financeiro ✅ **PRODUCTION CLOSED**
+5. FASE 5 — Credit Decision Support ✅ **PRODUCTION CLOSED** (ver `docs/BASELINE_FASE_5.md`)
+6. FASE 6 — Operations & Integrations — **IN PROGRESS**
+7. FASE 7 — Institutional Financing Integrations

@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   clients,
@@ -103,7 +103,12 @@ export async function runDecisionSupport(input: {
       and(
         eq(pendencies.processId, input.processId),
         eq(pendencies.tenantId, input.tenantId),
-        sql`${pendencies.status} IN ('ABERTA', 'EM_ANDAMENTO')`,
+        inArray(pendencies.status, [
+          "OPEN",
+          "SUBMITTED",
+          "UNDER_REVIEW",
+          "REJECTED",
+        ]),
       ),
     );
 

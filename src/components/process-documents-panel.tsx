@@ -11,6 +11,9 @@ type ChecklistItem = {
   competence: string | null;
   documentId: string | null;
   documentTypeCode: string;
+  documentTypeDescription: string | null;
+  annexNumber: number | null;
+  validityDays: number | null;
   notes: string | null;
   conditionKey: string | null;
 };
@@ -88,7 +91,7 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
     }
   }
 
-  async function markNotApplicable(checklistItemId: string) {
+  async function markNotApplicable(checklistItemId: string, notes: string) {
     setBusyId(checklistItemId);
     try {
       const response = await fetch(`/api/v1/processes/${processId}/checklist`, {
@@ -97,7 +100,7 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
         body: JSON.stringify({
           checklistItemId,
           action: "NAO_APLICAVEL",
-          notes: "Cliente sem cartão de crédito",
+          notes,
         }),
       });
       const json = await response.json();
@@ -146,7 +149,7 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
     await fetch(`/api/v1/pendencies/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "RESOLVIDA" }),
+      body: JSON.stringify({ status: "RESOLVED" }),
     });
     await reload();
   }
@@ -158,7 +161,7 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
           <div>
             <h2 className="font-serif text-xl">Documentação</h2>
             <p className="mt-1 text-sm text-slate-600">
-              Checklist dinâmico por perfil · storage privado (MinIO)
+              Anexos Caixa (1–12) · storage privado (MinIO)
             </p>
           </div>
           <div className="text-right">
@@ -181,16 +184,31 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
           {items.map((item) => (
             <li
               key={item.id}
-              className="flex flex-col gap-3 rounded-md border border-slate-200 p-3 md:flex-row md:items-center md:justify-between"
+              className="flex flex-col gap-3 rounded-md border border-slate-200 p-3 md:flex-row md:items-start md:justify-between"
             >
-              <div>
-                <p className="text-sm font-medium">{item.label}</p>
-                <p className="text-xs text-slate-500">
-                  {item.documentTypeCode} · {item.requirement} · {item.status}
-                  {item.notes ? ` · ${item.notes}` : ""}
-                </p>
+              <div className="flex min-w-0 gap-3">
+                {item.annexNumber ? (
+                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">
+                    {item.annexNumber}
+                  </span>
+                ) : null}
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">{item.label}</p>
+                  <p className="text-xs text-slate-500">
+                    {item.documentTypeCode} · {item.requirement} · {item.status}
+                    {item.validityDays
+                      ? ` · validade ${item.validityDays} dias`
+                      : ""}
+                    {item.notes ? ` · ${item.notes}` : ""}
+                  </p>
+                  {item.documentTypeDescription ? (
+                    <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                      {item.documentTypeDescription}
+                    </p>
+                  ) : null}
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 md:shrink-0">
                 {item.status === "PENDENTE" || item.status === "REJEITADO" ? (
                   <label className="cursor-pointer rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
                     {busyId === item.id ? "Enviando..." : "Upload"}
@@ -212,9 +230,26 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
                   <button
                     type="button"
                     className="rounded-md border border-slate-300 px-3 py-1.5 text-xs hover:bg-slate-50"
-                    onClick={() => void markNotApplicable(item.id)}
+                    onClick={() =>
+                      void markNotApplicable(item.id, "Cliente sem cartão de crédito")
+                    }
                   >
                     Sem cartão
+                  </button>
+                ) : null}
+                {item.conditionKey === "FATOR_SOCIAL" &&
+                item.status === "PENDENTE" ? (
+                  <button
+                    type="button"
+                    className="rounded-md border border-slate-300 px-3 py-1.5 text-xs hover:bg-slate-50"
+                    onClick={() =>
+                      void markNotApplicable(
+                        item.id,
+                        "Não se aplica — sem enquadramento Minha Casa Minha Vida / sem dependentes",
+                      )
+                    }
+                  >
+                    Não se aplica
                   </button>
                 ) : null}
                 {item.documentId ? (
@@ -303,7 +338,7 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
                   <p className="text-xs text-slate-600">{item.description}</p>
                   <p className="text-xs text-slate-400">{item.status}</p>
                 </div>
-                {item.status === "ABERTA" ? (
+                {item.status === "OPEN" || item.status === "SUBMITTED" ? (
                   <button
                     type="button"
                     className="rounded px-2 py-1 text-xs hover:bg-slate-50"

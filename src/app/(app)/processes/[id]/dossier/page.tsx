@@ -6,7 +6,7 @@ export default async function ProcessDossierPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requirePermission("processes:read");
+  await requirePermission("decision:read");
   const { id } = await params;
   return <ProcessDossierView processId={id} />;
 }

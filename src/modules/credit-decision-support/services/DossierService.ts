@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   auditLogs,
@@ -284,7 +284,12 @@ export async function getProcessDossier(
       and(
         eq(pendencies.processId, processId),
         eq(pendencies.tenantId, session.tenantId),
-        sql`${pendencies.status} IN ('ABERTA', 'EM_ANDAMENTO')`,
+        inArray(pendencies.status, [
+          "OPEN",
+          "SUBMITTED",
+          "UNDER_REVIEW",
+          "REJECTED",
+        ]),
       ),
     );
 

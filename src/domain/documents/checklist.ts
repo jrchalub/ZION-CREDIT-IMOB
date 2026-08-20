@@ -1,4 +1,4 @@
-import { and, asc, count, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
   documentTypes,
@@ -6,20 +6,12 @@ import {
   incomeProfileDocumentRequirements,
   processChecklistItems,
 } from "@/db/schema";
+import { loadProcessForSession } from "@/domain/access/scope";
 import { AppError } from "@/lib/api";
 import type { SessionPayload } from "@/lib/auth/session";
+import { getAnnexByCode, type IncomeProfile } from "./caixa-annex-catalog";
 
-type Profile =
-  | "AUTONOMO"
-  | "CLT"
-  | "MEI"
-  | "EMPRESARIO"
-  | "SERVIDOR_PUBLICO"
-  | "APOSENTADO"
-  | "PENSIONISTA"
-  | "COMPOSICAO_RENDA"
-  | "SOCIO_EMPRESA"
-  | "PRODUTOR_RURAL";
+type Profile = IncomeProfile;
 
 function lastNMonths(n: number): string[] {
   const now = new Date();
@@ -37,6 +29,8 @@ function expandLabel(template: string | null, competence?: string) {
   if (!template) return "";
   return template.replace("{competence}", competence ?? "");
 }
+
+const RETIRED_NOTES = "Catálogo Caixa — item substituído pelos anexos oficiais";
 
 export async function generateChecklistForProcess(
   tenantId: string,
@@ -65,56 +59,162 @@ export async function generateChecklistForProcess(
     )
     .orderBy(asc(incomeProfileDocumentRequirements.sortOrder));
 
+  const existing = await db
+    .select()
+    .from(processChecklistItems)
+    .where(
+      and(
+        eq(processChecklistItems.processId, processId),
+        eq(processChecklistItems.tenantId, tenantId),
+      ),
+    );
+
+  const existingByType = new Map<string, typeof existing>();
+  for (const item of existing) {
+    const list = existingByType.get(item.documentTypeId) ?? [];
+    list.push(item);
+    existingByType.set(item.documentTypeId, list);
+  }
+
+  const catalogTypeIds = new Set(requirements.map((item) => item.type.id));
   const months3 = lastNMonths(3);
   const months2 = lastNMonths(2);
-  const rows: Array<typeof processChecklistItems.$inferInsert> = [];
 
   for (const item of requirements) {
     const qty = item.requirement.quantity;
     const conditionKey = item.requirement.conditionKey;
+    const current = existingByType.get(item.type.id) ?? [];
+    const live = current.filter((row) => row.status !== "NAO_APLICAVEL");
+    const keptNotApplicable = current.find(
+      (row) =>
+        row.status === "NAO_APLICAVEL" && row.notes !== RETIRED_NOTES,
+    );
 
     if (conditionKey === "HAS_CREDIT_CARD" && !hasCreditCard) {
-      rows.push({
-        tenantId,
-        processId,
-        documentTypeId: item.type.id,
-        label: item.requirement.labelTemplate ?? item.type.name,
-        requirement: "CONDICIONAL",
-        status: "NAO_APLICAVEL",
-        sortOrder: item.requirement.sortOrder,
-        conditionKey,
-        notes: "Cliente sem cartão de crédito declarado",
-      });
+      if (live.length === 0) {
+        await db.insert(processChecklistItems).values({
+          tenantId,
+          processId,
+          documentTypeId: item.type.id,
+          label: item.requirement.labelTemplate ?? item.type.name,
+          requirement: "CONDICIONAL",
+          status: "NAO_APLICAVEL",
+          sortOrder: item.requirement.sortOrder,
+          conditionKey,
+          notes: "Cliente sem cartão de crédito declarado",
+        });
+      }
+      continue;
+    }
+
+    const label =
+      expandLabel(item.requirement.labelTemplate) || item.type.name;
+
+    if (qty <= 1) {
+      if (live.length === 0) {
+        if (keptNotApplicable) continue;
+        await db.insert(processChecklistItems).values({
+          tenantId,
+          processId,
+          documentTypeId: item.type.id,
+          label,
+          requirement: item.requirement.requirement,
+          status: "PENDENTE",
+          sortOrder: item.requirement.sortOrder,
+          conditionKey,
+        });
+        continue;
+      }
+
+      const [primary, ...extras] = live;
+      await db
+        .update(processChecklistItems)
+        .set({
+          label,
+          requirement: item.requirement.requirement,
+          sortOrder: item.requirement.sortOrder,
+          conditionKey,
+          updatedAt: new Date(),
+        })
+        .where(eq(processChecklistItems.id, primary.id));
+
+      for (const extra of extras) {
+        if (extra.status === "PENDENTE" && !extra.documentId) {
+          await db
+            .update(processChecklistItems)
+            .set({
+              status: "NAO_APLICAVEL",
+              notes: RETIRED_NOTES,
+              updatedAt: new Date(),
+            })
+            .where(eq(processChecklistItems.id, extra.id));
+        }
+      }
       continue;
     }
 
     const competences =
-      qty === 3 ? months3 : qty === 2 ? months2 : qty > 1 ? lastNMonths(qty) : [null];
+      qty === 3 ? months3 : qty === 2 ? months2 : lastNMonths(qty);
 
-    competences.forEach((competence, index) => {
-      const label =
-        expandLabel(item.requirement.labelTemplate, competence ?? undefined) ||
-        (competence
-          ? `${item.type.name} — ${competence}`
-          : item.type.name);
-
-      rows.push({
+    for (const [index, competence] of competences.entries()) {
+      const competenceLabel =
+        expandLabel(item.requirement.labelTemplate, competence) ||
+        `${item.type.name} — ${competence}`;
+      const match = live.find((row) => row.competence === competence);
+      if (match) {
+        await db
+          .update(processChecklistItems)
+          .set({
+            label: competenceLabel,
+            requirement: item.requirement.requirement,
+            sortOrder: item.requirement.sortOrder * 10 + index,
+            conditionKey,
+            updatedAt: new Date(),
+          })
+          .where(eq(processChecklistItems.id, match.id));
+        continue;
+      }
+      await db.insert(processChecklistItems).values({
         tenantId,
         processId,
         documentTypeId: item.type.id,
-        label,
+        label: competenceLabel,
         requirement: item.requirement.requirement,
         status: "PENDENTE",
         sortOrder: item.requirement.sortOrder * 10 + index,
         competence,
         conditionKey,
       });
-    });
+    }
   }
 
-  if (rows.length === 0) return [];
+  for (const item of existing) {
+    if (catalogTypeIds.has(item.documentTypeId)) continue;
+    if (item.status !== "PENDENTE" || item.documentId) continue;
+    await db
+      .update(processChecklistItems)
+      .set({
+        status: "NAO_APLICAVEL",
+        notes: RETIRED_NOTES,
+        updatedAt: new Date(),
+      })
+      .where(eq(processChecklistItems.id, item.id));
+  }
 
-  return db.insert(processChecklistItems).values(rows).returning();
+  return listChecklistRows(tenantId, processId);
+}
+
+async function listChecklistRows(tenantId: string, processId: string) {
+  return db
+    .select()
+    .from(processChecklistItems)
+    .where(
+      and(
+        eq(processChecklistItems.processId, processId),
+        eq(processChecklistItems.tenantId, tenantId),
+      ),
+    )
+    .orderBy(asc(processChecklistItems.sortOrder));
 }
 
 export async function ensureChecklistExists(
@@ -135,20 +235,6 @@ export async function ensureChecklistExists(
 
   if (!process) throw new AppError(404, "Processo não encontrado", "PROCESS_NOT_FOUND");
 
-  const [existing] = await db
-    .select({ value: count() })
-    .from(processChecklistItems)
-    .where(
-      and(
-        eq(processChecklistItems.processId, processId),
-        eq(processChecklistItems.tenantId, session.tenantId),
-      ),
-    );
-
-  if (Number(existing?.value ?? 0) > 0) {
-    return listChecklist(session, processId);
-  }
-
   await generateChecklistForProcess(
     session.tenantId,
     processId,
@@ -160,11 +246,14 @@ export async function ensureChecklistExists(
 }
 
 export async function listChecklist(session: SessionPayload, processId: string) {
+  await loadProcessForSession(session, processId);
+
   const items = await db
     .select({
       item: processChecklistItems,
       documentTypeCode: documentTypes.code,
       documentTypeName: documentTypes.name,
+      documentTypeDescription: documentTypes.description,
     })
     .from(processChecklistItems)
     .innerJoin(
@@ -179,24 +268,40 @@ export async function listChecklist(session: SessionPayload, processId: string) 
     )
     .orderBy(asc(processChecklistItems.sortOrder));
 
-  const totalApplicable = items.filter(
+  const visible = items.filter(
+    (row) =>
+      !(
+        row.item.status === "NAO_APLICAVEL" &&
+        row.item.notes === RETIRED_NOTES
+      ),
+  );
+
+  const scored = visible.filter((i) => i.item.requirement !== "OPCIONAL");
+  const totalApplicable = scored.filter(
     (i) => i.item.status !== "NAO_APLICAVEL",
   ).length;
-  const completed = items.filter(
+  const completed = scored.filter(
     (i) =>
       i.item.status === "VALIDADO" ||
       i.item.status === "ENVIADO" ||
       i.item.status === "NAO_APLICAVEL",
   ).length;
-  const validated = items.filter((i) => i.item.status === "VALIDADO").length;
-  const pending = items.filter((i) => i.item.status === "PENDENTE").length;
+  const validated = visible.filter((i) => i.item.status === "VALIDADO").length;
+  const pending = visible.filter((i) => i.item.status === "PENDENTE").length;
 
   return {
-    items: items.map((row) => ({
-      ...row.item,
-      documentTypeCode: row.documentTypeCode,
-      documentTypeName: row.documentTypeName,
-    })),
+    items: visible.map((row) => {
+      const annex = getAnnexByCode(row.documentTypeCode);
+      return {
+        ...row.item,
+        documentTypeCode: row.documentTypeCode,
+        documentTypeName: row.documentTypeName,
+        documentTypeDescription:
+          annex?.description ?? row.documentTypeDescription,
+        annexNumber: annex?.annexNumber ?? null,
+        validityDays: annex?.validityDays ?? null,
+      };
+    }),
     progress: {
       totalApplicable,
       completed,
@@ -216,6 +321,8 @@ export async function markChecklistNotApplicable(
   checklistItemId: string,
   notes?: string,
 ) {
+  await loadProcessForSession(session, processId);
+
   const [updated] = await db
     .update(processChecklistItems)
     .set({

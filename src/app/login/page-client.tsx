@@ -26,7 +26,10 @@ export default function LoginPage() {
         setError(payload?.error?.message ?? "Falha no login");
         return;
       }
-      const next = searchParams.get("next") || "/dashboard";
+      const role = payload?.data?.user?.role as string | undefined;
+      const next =
+        searchParams.get("next") ||
+        (role === "CORRESPONDENTE" ? "/dashboard" : "/dashboard");
       router.push(next);
       router.refresh();
     } catch {

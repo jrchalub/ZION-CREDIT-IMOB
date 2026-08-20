@@ -1,13 +1,13 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
   documentTypes,
   documents,
-  financingProcesses,
   pendencies,
   processChecklistItems,
 } from "@/db/schema";
+import { loadProcessForSession } from "@/domain/access/scope";
 import { writeAuditLog } from "@/domain/audit/service";
 import { AppError } from "@/lib/api";
 import type { SessionPayload } from "@/lib/auth/session";
@@ -36,6 +36,8 @@ export async function listProcessDocuments(
   session: SessionPayload,
   processId: string,
 ) {
+  await loadProcessForSession(session, processId);
+
   return db
     .select({
       document: documents,
@@ -54,18 +56,7 @@ export async function listProcessDocuments(
 }
 
 async function getOwnedProcess(session: SessionPayload, processId: string) {
-  const [process] = await db
-    .select()
-    .from(financingProcesses)
-    .where(
-      and(
-        eq(financingProcesses.id, processId),
-        eq(financingProcesses.tenantId, session.tenantId),
-      ),
-    )
-    .limit(1);
-  if (!process) throw new AppError(404, "Processo não encontrado", "PROCESS_NOT_FOUND");
-  return process;
+  return loadProcessForSession(session, processId);
 }
 
 export async function uploadDocument(
@@ -169,9 +160,10 @@ export async function uploadDocument(
       documentId: created.id,
       checklistItemId: checklistItem.id,
       type: "DUPLICATE_DOCUMENT",
+      title: "Documento duplicado",
       description: "Documento com hash idêntico a outro já enviado neste processo",
       priority: "MEDIA",
-      status: "ABERTA",
+      status: "OPEN",
       idempotencyKey: `${input.processId}:${created.id}:DUPLICATE_DOCUMENT`,
       createdByUserId: session.sub,
     });
@@ -186,11 +178,11 @@ export async function uploadDocument(
     })
     .where(eq(processChecklistItems.id, checklistItem.id));
 
-  // Close open pendency for this checklist item if any
+  // Close open pendency for this checklist item if any (staff upload → resolve)
   await db
     .update(pendencies)
     .set({
-      status: "RESOLVIDA",
+      status: "RESOLVED",
       resolvedAt: new Date(),
       updatedAt: new Date(),
     })
@@ -199,7 +191,7 @@ export async function uploadDocument(
         eq(pendencies.tenantId, session.tenantId),
         eq(pendencies.processId, input.processId),
         eq(pendencies.checklistItemId, checklistItem.id),
-        eq(pendencies.status, "ABERTA"),
+        inArray(pendencies.status, ["OPEN", "SUBMITTED", "REJECTED"]),
       ),
     );
 
@@ -256,6 +248,7 @@ export async function getDocumentForTenant(
     .limit(1);
 
   if (!row) throw new AppError(404, "Documento não encontrado", "DOCUMENT_NOT_FOUND");
+  await loadProcessForSession(session, row.document.processId);
   return row;
 }
 
@@ -337,11 +330,12 @@ export async function reviewDocument(
       documentId: document.id,
       checklistItemId: document.checklistItemId,
       type: "DOCUMENTO_REJEITADO",
+      title: "Documento rejeitado",
       description:
         input.reason?.trim() ||
         "Documento rejeitado — necessário reenvio",
       priority: "ALTA",
-      status: "ABERTA",
+      status: "OPEN",
       createdByUserId: session.sub,
     });
   }

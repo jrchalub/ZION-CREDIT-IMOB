@@ -20,7 +20,9 @@ export default async function ProcessesPage() {
           <p className="text-xs tracking-[0.18em] text-teal-700 uppercase">
             Pipeline
           </p>
-          <h1 className="mt-1 font-serif text-3xl">Processos</h1>
+          <h1 className="mt-1 font-serif text-3xl">
+            {session.role === "CORRESPONDENTE" ? "Meus processos" : "Processos"}
+          </h1>
         </div>
         <Link
           href="/processes/new"

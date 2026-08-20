@@ -21,7 +21,7 @@ const createSchema = z.object({
 export async function GET(request: Request, { params }: Params) {
   const correlationId = createCorrelationId(request);
   try {
-    const session = await requirePermission("processes:read");
+    const session = await requirePermission("financial:read");
     const { id } = await params;
     await getProcess(session, id);
     const rows = await db
@@ -37,7 +37,7 @@ export async function GET(request: Request, { params }: Params) {
 export async function POST(request: Request, { params }: Params) {
   const correlationId = createCorrelationId(request);
   try {
-    const session = await requirePermission("processes:write");
+    const session = await requirePermission("financial:write");
     const { id } = await params;
     await getProcess(session, id);
     const body = createSchema.parse(await request.json());

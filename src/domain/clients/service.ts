@@ -2,6 +2,10 @@ import { and, count, desc, eq, ilike, or } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { clientAddresses, clients } from "@/db/schema";
+import {
+  assertClientReadable,
+  clientOwnershipCondition,
+} from "@/domain/access/scope";
 import { writeAuditLog } from "@/domain/audit/service";
 import { AppError } from "@/lib/api";
 import { isValidCpf, stripCpf } from "@/lib/cpf";
@@ -57,16 +61,16 @@ export async function listClients(
   session: SessionPayload,
   opts: { page: number; pageSize: number; offset: number; q?: string },
 ) {
-  const where = opts.q
-    ? and(
-        eq(clients.tenantId, session.tenantId),
-        or(
-          ilike(clients.fullName, `%${opts.q}%`),
-          ilike(clients.email, `%${opts.q}%`),
-          eq(clients.cpf, stripCpf(opts.q)),
-        ),
+  const ownership = clientOwnershipCondition(session);
+  const search = opts.q
+    ? or(
+        ilike(clients.fullName, `%${opts.q}%`),
+        ilike(clients.email, `%${opts.q}%`),
+        eq(clients.cpf, stripCpf(opts.q)),
       )
-    : eq(clients.tenantId, session.tenantId);
+    : undefined;
+
+  const where = and(eq(clients.tenantId, session.tenantId), ownership, search);
 
   const [rows, totalRow] = await Promise.all([
     db
@@ -95,6 +99,7 @@ export async function getClient(session: SessionPayload, id: string) {
     .limit(1);
 
   if (!client) throw new AppError(404, "Cliente não encontrado", "CLIENT_NOT_FOUND");
+  await assertClientReadable(session, id);
 
   const addresses = await db
     .select()

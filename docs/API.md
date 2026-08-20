@@ -50,12 +50,25 @@ UI: `/documents/:id/review`
 
 | Método | Rota | Permissão | Notas |
 |--------|------|-----------|-------|
-| GET/POST | `/processes/:id/financial-analysis` | `processes:read` / `processes:write` | Pré-análise; POST `{ mode: "sync" \| "enqueue" }` |
-| GET/POST | `/processes/:id/debts` | `processes:read` / `processes:write` | Dívidas manuais do processo |
-| PATCH | `/bank-transactions/:id/classification` | `processes:write` | Override humano de categoria |
-| GET | `/processes/:id/dossier` | `processes:read` | FASE 5 — dossiê completo explicável |
-| POST | `/processes/:id/dossier` | `processes:write` | Gera DecisionSupportSnapshot + factors |
-| GET/POST | `/processes/:id/analyst-review` | `processes:read/write` | Parecer humano (start / decide) |
+| GET/POST | `/processes/:id/financial-analysis` | `financial:read` / `financial:write` | Pré-análise; POST `{ mode: "sync" \| "enqueue" }` |
+| GET/POST | `/processes/:id/debts` | `financial:read` / `financial:write` | Dívidas manuais do processo |
+| PATCH | `/bank-transactions/:id/classification` | `financial:write` | Override humano de categoria |
+| GET | `/processes/:id/dossier` | `decision:read` | FASE 5 — dossiê completo explicável |
+| POST | `/processes/:id/dossier` | `decision:write` | Gera DecisionSupportSnapshot + factors |
+| GET/POST | `/processes/:id/analyst-review` | `decision:read` / `decision:write` | Parecer humano (start / decide) |
+| GET | `/processes/:id/operational` | `processes:read` | FASE 6.2 — visão operacional (correspondent-safe) |
+| GET/POST | `/processes/:id/portal-access` | `processes:write` | FASE 6.3 — listar / emitir link do cliente |
+| POST | `/processes/:id/portal-access/:tokenId/revoke` | `processes:write` | Revoga token |
+| GET | `/portal/:token` | token | Visão cliente (sem dados internos) |
+| POST | `/portal/:token/documents` | token | Upload via portal |
+| PATCH | `/portal/:token/pendencies/:id` | token | Cliente → SUBMITTED |
+| GET | `/operations/dashboard` | `operations:read` | FASE 6 — filas, aging, SLA (tenant-wide) |
+| GET/POST | `/pendencies` | `pendencies:read/write` | FASE 6.4 — create OPEN; notify emite deep link (6.5) |
+| PATCH | `/pendencies/:id` | `pendencies:write` ou `pendencies:respond` | Máquina OPEN→SUBMITTED→… |
+| GET/POST | `/processes/:id/integrations` | `integrations:read/write` | FASE 6.6 — Bureau / Bank read |
+
+FASE 6.5: criar pendência com `notifyClient` gera token de portal + mensagem WhatsApp/email (link apenas; sem documento no canal).  
+FASE 6.6: integrações de **leitura** apenas; envio institucional = FASE 7.
 
 Disclaimer obrigatório: suporte à decisão — não é aprovação bancária. Sem score mágico.
 

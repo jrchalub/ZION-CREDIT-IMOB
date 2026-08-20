@@ -9,6 +9,8 @@ export type SessionPayload = {
   email: string;
   fullName: string;
   role: UserRole;
+  /** Set for CORRESPONDENTE users linked to an org. */
+  correspondentId: string | null;
 };
 
 const COOKIE_NAME = process.env.AUTH_COOKIE_NAME ?? "zion_session";
@@ -31,6 +33,7 @@ export async function createSessionToken(payload: SessionPayload): Promise<strin
     email: payload.email,
     fullName: payload.fullName,
     role: payload.role,
+    correspondentId: payload.correspondentId,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(payload.sub)
@@ -51,12 +54,16 @@ export async function verifySessionToken(token: string): Promise<SessionPayload>
     throw new AppError(401, "Sessão inválida", "INVALID_SESSION");
   }
 
+  const correspondentId =
+    typeof payload.correspondentId === "string" ? payload.correspondentId : null;
+
   return {
     sub: payload.sub,
     tenantId: payload.tenantId,
     email: payload.email,
     fullName: payload.fullName,
     role: payload.role as UserRole,
+    correspondentId,
   };
 }
 

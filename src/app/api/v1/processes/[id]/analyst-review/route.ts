@@ -25,7 +25,7 @@ const postSchema = z.discriminatedUnion("action", [
 export async function GET(request: Request, { params }: Params) {
   const correlationId = createCorrelationId(request);
   try {
-    const session = await requirePermission("processes:read");
+    const session = await requirePermission("decision:read");
     const { id } = await params;
     await getProcess(session, id);
     const reviews = await listAnalystReviews(session, id);
@@ -38,7 +38,7 @@ export async function GET(request: Request, { params }: Params) {
 export async function POST(request: Request, { params }: Params) {
   const correlationId = createCorrelationId(request);
   try {
-    const session = await requirePermission("processes:write");
+    const session = await requirePermission("decision:write");
     const { id } = await params;
     await getProcess(session, id);
     const body = postSchema.parse(await request.json());

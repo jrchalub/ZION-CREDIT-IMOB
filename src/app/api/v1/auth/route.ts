@@ -26,6 +26,7 @@ export async function POST(request: Request) {
         fullName: session.fullName,
         role: session.role,
         tenantId: session.tenantId,
+        correspondentId: session.correspondentId,
       },
     });
   } catch (error) {
@@ -58,6 +59,7 @@ export async function GET(request: Request) {
         fullName: session.fullName,
         role: session.role,
         tenantId: session.tenantId,
+        correspondentId: session.correspondentId,
       },
     });
   } catch (error) {

@@ -8,6 +8,7 @@ export type UserRole =
 
 export type Permission =
   | "dashboard:read"
+  | "operations:read"
   | "clients:read"
   | "clients:write"
   | "processes:read"
@@ -18,6 +19,13 @@ export type Permission =
   | "documents:review"
   | "pendencies:read"
   | "pendencies:write"
+  | "pendencies:respond"
+  | "financial:read"
+  | "financial:write"
+  | "decision:read"
+  | "decision:write"
+  | "integrations:read"
+  | "integrations:write"
   | "audit:read"
   | "users:read"
   | "users:write"
@@ -26,6 +34,7 @@ export type Permission =
 const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
   ADMIN: [
     "dashboard:read",
+    "operations:read",
     "clients:read",
     "clients:write",
     "processes:read",
@@ -36,6 +45,13 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "documents:review",
     "pendencies:read",
     "pendencies:write",
+    "pendencies:respond",
+    "financial:read",
+    "financial:write",
+    "decision:read",
+    "decision:write",
+    "integrations:read",
+    "integrations:write",
     "audit:read",
     "users:read",
     "users:write",
@@ -43,6 +59,7 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
   ],
   GESTOR: [
     "dashboard:read",
+    "operations:read",
     "clients:read",
     "clients:write",
     "processes:read",
@@ -53,11 +70,19 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "documents:review",
     "pendencies:read",
     "pendencies:write",
+    "pendencies:respond",
+    "financial:read",
+    "financial:write",
+    "decision:read",
+    "decision:write",
+    "integrations:read",
+    "integrations:write",
     "audit:read",
     "users:read",
   ],
   ANALISTA: [
     "dashboard:read",
+    "operations:read",
     "clients:read",
     "processes:read",
     "processes:write",
@@ -67,6 +92,13 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "documents:review",
     "pendencies:read",
     "pendencies:write",
+    "pendencies:respond",
+    "financial:read",
+    "financial:write",
+    "decision:read",
+    "decision:write",
+    "integrations:read",
+    "integrations:write",
     "audit:read",
   ],
   CORRESPONDENTE: [
@@ -78,9 +110,11 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "documents:read",
     "documents:write",
     "pendencies:read",
+    "pendencies:respond",
   ],
   OPERADOR: [
     "dashboard:read",
+    "operations:read",
     "clients:read",
     "clients:write",
     "processes:read",
@@ -89,6 +123,7 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "documents:write",
     "pendencies:read",
     "pendencies:write",
+    "pendencies:respond",
   ],
   CLIENTE: [
     "processes:read",
@@ -111,4 +146,23 @@ export function assertPermission(role: UserRole, permission: Permission): void {
 
 export function listPermissions(role: UserRole): Permission[] {
   return [...ROLE_PERMISSIONS[role]];
+}
+
+/** Nav items allowed for a role (FASE 6.2 correspondent shell). */
+export function navItemsForRole(role: UserRole): Array<{
+  href: string;
+  label: string;
+  permission?: Permission;
+}> {
+  const all = [
+    { href: "/dashboard", label: "Dashboard", permission: "dashboard:read" as const },
+    { href: "/clients", label: "Clientes", permission: "clients:read" as const },
+    {
+      href: "/processes",
+      label: role === "CORRESPONDENTE" ? "Meus processos" : "Processos",
+      permission: "processes:read" as const,
+    },
+    { href: "/audit", label: "Auditoria", permission: "audit:read" as const },
+  ];
+  return all.filter((item) => !item.permission || hasPermission(role, item.permission));
 }

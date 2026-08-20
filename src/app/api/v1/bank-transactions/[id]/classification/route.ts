@@ -27,7 +27,7 @@ const bodySchema = z.object({
 export async function PATCH(request: Request, { params }: Params) {
   const correlationId = createCorrelationId(request);
   try {
-    const session = await requirePermission("processes:write");
+    const session = await requirePermission("financial:write");
     const { id } = await params;
     const body = bodySchema.parse(await request.json());
 

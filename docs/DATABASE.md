@@ -52,6 +52,12 @@ Regra: **COMPLETED ≠ VALIDADO**.
 | `decision_support_snapshots` | Dossiê FASE 5 imutável (`credit-support-v1`) |
 | `decision_factors` | Fatores explicáveis com origem/evidência |
 | `credit_analyst_reviews` | Parecer humano (justificativa + snapshot) |
+| `process_sla` | SLA operacional (FASE 6) |
+| `notifications` | Notificações outbound (FASE 6) |
+| `users.correspondent_id` | Vínculo login → org correspondente (FASE 6.2) |
+| `portal_access_tokens` | Token de portal cliente — só `token_hash` (FASE 6.3) |
+| `pendencies` (lifecycle) | Self-service OPEN→…→RESOLVED (FASE 6.4) |
+| `integration_calls` | Consultas Bureau/Bank read (FASE 6.6) |
 
 ## Convenções
 

@@ -90,6 +90,10 @@ export const users = pgTable(
     passwordHash: text("password_hash").notNull(),
     fullName: text("full_name").notNull(),
     role: userRoleEnum("role").notNull(),
+    /** Links login user to correspondent org (FASE 6.2 portal). */
+    correspondentId: uuid("correspondent_id").references(() => correspondents.id, {
+      onDelete: "set null",
+    }),
     phone: text("phone"),
     active: boolean("active").notNull().default(true),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
@@ -100,6 +104,7 @@ export const users = pgTable(
     uniqueIndex("users_tenant_email_uidx").on(table.tenantId, table.email),
     index("users_tenant_idx").on(table.tenantId),
     index("users_role_idx").on(table.role),
+    index("users_correspondent_idx").on(table.correspondentId),
   ],
 );
 
@@ -373,10 +378,12 @@ export const pendencyPriorityEnum = pgEnum("pendency_priority", [
 ]);
 
 export const pendencyStatusEnum = pgEnum("pendency_status", [
-  "ABERTA",
-  "EM_ANDAMENTO",
-  "RESOLVIDA",
-  "CANCELADA",
+  "OPEN",
+  "SUBMITTED",
+  "UNDER_REVIEW",
+  "RESOLVED",
+  "REJECTED",
+  "CANCELLED",
 ]);
 
 export const documentTypes = pgTable(
@@ -522,13 +529,17 @@ export const pendencies = pgTable(
       { onDelete: "set null" },
     ),
     type: text("type").notNull(),
+    title: text("title").notNull(),
     description: text("description").notNull(),
     priority: pendencyPriorityEnum("priority").notNull().default("MEDIA"),
-    status: pendencyStatusEnum("status").notNull().default("ABERTA"),
+    status: pendencyStatusEnum("status").notNull().default("OPEN"),
     idempotencyKey: text("idempotency_key"),
     assigneeUserId: uuid("assignee_user_id").references(() => users.id),
     dueAt: timestamp("due_at", { withTimezone: true }),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    reviewedByUserId: uuid("reviewed_by_user_id").references(() => users.id),
+    reviewNote: text("review_note"),
     createdByUserId: uuid("created_by_user_id").references(() => users.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1319,5 +1330,178 @@ export const creditAnalystReviews = pgTable(
     index("credit_analyst_reviews_process_idx").on(table.processId),
     index("credit_analyst_reviews_status_idx").on(table.status),
     index("credit_analyst_reviews_snapshot_idx").on(table.decisionSupportSnapshotId),
+  ],
+);
+
+/**
+ * FASE 6 — Operations & Integrations
+ * SLA tracking + outbound notifications (providers decoupled).
+ */
+export const notificationChannelEnum = pgEnum("notification_channel", [
+  "EMAIL",
+  "WHATSAPP",
+  "SMS",
+  "PUSH",
+  "IN_APP",
+]);
+
+export const notificationStatusEnum = pgEnum("notification_status", [
+  "PENDING",
+  "QUEUED",
+  "SENT",
+  "FAILED",
+  "SKIPPED",
+]);
+
+export const processSla = pgTable(
+  "process_sla",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    processId: uuid("process_id")
+      .notNull()
+      .references(() => financingProcesses.id, { onDelete: "cascade" }),
+    documentationStartedAt: timestamp("documentation_started_at", {
+      withTimezone: true,
+    }),
+    documentationCompletedAt: timestamp("documentation_completed_at", {
+      withTimezone: true,
+    }),
+    analysisStartedAt: timestamp("analysis_started_at", { withTimezone: true }),
+    analysisCompletedAt: timestamp("analysis_completed_at", { withTimezone: true }),
+    dossierReadyAt: timestamp("dossier_ready_at", { withTimezone: true }),
+    reviewStartedAt: timestamp("review_started_at", { withTimezone: true }),
+    reviewCompletedAt: timestamp("review_completed_at", { withTimezone: true }),
+    sentToInstitutionAt: timestamp("sent_to_institution_at", {
+      withTimezone: true,
+    }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    documentationMs: integer("documentation_ms"),
+    analysisMs: integer("analysis_ms"),
+    reviewMs: integer("review_ms"),
+    totalMs: integer("total_ms"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("process_sla_process_uidx").on(table.processId),
+    index("process_sla_tenant_idx").on(table.tenantId),
+  ],
+);
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    processId: uuid("process_id").references(() => financingProcesses.id, {
+      onDelete: "set null",
+    }),
+    clientId: uuid("client_id").references(() => clients.id, {
+      onDelete: "set null",
+    }),
+    eventType: text("event_type").notNull(),
+    channel: notificationChannelEnum("channel").notNull(),
+    status: notificationStatusEnum("status").notNull().default("PENDING"),
+    recipient: text("recipient"),
+    subject: text("subject"),
+    body: text("body").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().default({}),
+    provider: text("provider"),
+    providerMessageId: text("provider_message_id"),
+    errorMessage: text("error_message"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("notifications_tenant_idx").on(table.tenantId),
+    index("notifications_process_idx").on(table.processId),
+    index("notifications_event_idx").on(table.eventType),
+    index("notifications_status_idx").on(table.status),
+  ],
+);
+
+/** FASE 6.3 — secure client portal access (raw token never stored). */
+export const portalAccessTokens = pgTable(
+  "portal_access_tokens",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    processId: uuid("process_id")
+      .notNull()
+      .references(() => financingProcesses.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    label: text("label"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("portal_access_tokens_hash_uidx").on(table.tokenHash),
+    index("portal_access_tokens_tenant_idx").on(table.tenantId),
+    index("portal_access_tokens_process_idx").on(table.processId),
+    index("portal_access_tokens_expires_idx").on(table.expiresAt),
+  ],
+);
+
+/** FASE 6.6 — external read integrations (bureau / bank account read). Not FASE 7 financing. */
+export const integrationKindEnum = pgEnum("integration_kind", [
+  "BUREAU",
+  "BANK_READ",
+]);
+
+export const integrationCallStatusEnum = pgEnum("integration_call_status", [
+  "QUEUED",
+  "SUCCEEDED",
+  "FAILED",
+  "SKIPPED",
+]);
+
+export const integrationCalls = pgTable(
+  "integration_calls",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    processId: uuid("process_id")
+      .notNull()
+      .references(() => financingProcesses.id, { onDelete: "cascade" }),
+    clientId: uuid("client_id").references(() => clients.id, {
+      onDelete: "set null",
+    }),
+    kind: integrationKindEnum("kind").notNull(),
+    provider: text("provider").notNull(),
+    status: integrationCallStatusEnum("status").notNull().default("QUEUED"),
+    /** Redacted request fingerprint — never store raw CPF/secrets */
+    requestSummary: jsonb("request_summary")
+      .$type<Record<string, unknown>>()
+      .default({}),
+    /** Provider response summary (mock/HTTP) — no full bureau dumps */
+    responseSummary: jsonb("response_summary")
+      .$type<Record<string, unknown>>()
+      .default({}),
+    providerRef: text("provider_ref"),
+    errorMessage: text("error_message"),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("integration_calls_tenant_idx").on(table.tenantId),
+    index("integration_calls_process_idx").on(table.processId),
+    index("integration_calls_kind_idx").on(table.kind),
+    index("integration_calls_created_idx").on(table.createdAt),
   ],
 );

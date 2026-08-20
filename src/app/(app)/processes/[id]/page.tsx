@@ -2,15 +2,24 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission } from "@/domain/auth/service";
 import { getProcess } from "@/domain/processes/service";
+import { hasPermission } from "@/domain/rbac/permissions";
 import { StatusBadge } from "@/components/status-badge";
 import { ProcessActions } from "@/components/process-actions";
 import { ProcessDocumentsPanel } from "@/components/process-documents-panel";
 import { ProcessDossierPanel } from "@/components/process-dossier-panel";
 import { ProcessFinancialPanel } from "@/components/process-financial-panel";
+import { ProcessOperationalPanel } from "@/components/process-operational-panel";
+import { PortalAccessPanel } from "@/components/portal-access-panel";
+import { ProcessPendenciesPanel } from "@/components/process-pendencies-panel";
+import { ProcessIntegrationsPanel } from "@/components/process-integrations-panel";
 import {
   PROCESS_STATUS_LABELS,
   type ProcessStatus,
 } from "@/domain/process/status-machine";
+import {
+  OPERATIONAL_STAGE_LABELS,
+  toOperationalStage,
+} from "@/modules/operations/workflow/operational-stages";
 import { AppError } from "@/lib/api";
 import { formatCpfDisplay, formatCurrency } from "@/lib/utils";
 
@@ -30,12 +39,21 @@ export default async function ProcessDetailPage({
     throw error;
   }
 
+  const canTransition = hasPermission(session.role, "processes:transition");
+  const canFinancial = hasPermission(session.role, "financial:read");
+  const canDecision = hasPermission(session.role, "decision:read");
+  const canRespond = hasPermission(session.role, "pendencies:respond");
+  const canWritePendencies = hasPermission(session.role, "pendencies:write");
+  const canIntegrations = hasPermission(session.role, "integrations:read");
+  const canIssuePortal = hasPermission(session.role, "processes:write");
+  const isCorrespondent = session.role === "CORRESPONDENTE";
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Link href="/processes" className="text-sm text-teal-800 hover:underline">
-            ← Processos
+            ← {isCorrespondent ? "Meus processos" : "Processos"}
           </Link>
           <p className="mt-2 font-mono text-sm text-slate-500">
             {process.processNumber}
@@ -47,10 +65,20 @@ export default async function ProcessDetailPage({
         </div>
         <StatusBadge status={process.status as ProcessStatus} />
       </div>
+      <p className="text-sm text-slate-600">
+        Etapa operacional:{" "}
+        {
+          OPERATIONAL_STAGE_LABELS[
+            toOperationalStage(process.status as ProcessStatus)
+          ]
+        }
+      </p>
 
       <div className="grid gap-4 xl:grid-cols-3">
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2">
-          <h2 className="font-serif text-xl">Resumo do processo</h2>
+          <h2 className="font-serif text-xl">
+            {isCorrespondent ? "Cliente e operação" : "Resumo do processo"}
+          </h2>
           <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-slate-500">Banco pretendido</dt>
@@ -76,18 +104,28 @@ export default async function ProcessDetailPage({
               <dt className="text-slate-500">FGTS</dt>
               <dd>{formatCurrency(process.fgtsAmount)}</dd>
             </div>
-            <div>
-              <dt className="text-slate-500">Renda declarada</dt>
-              <dd>{formatCurrency(process.declaredIncome)}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Renda analisada</dt>
-              <dd>{formatCurrency(process.analyzedIncome)}</dd>
-            </div>
+            {!isCorrespondent ? (
+              <>
+                <div>
+                  <dt className="text-slate-500">Renda declarada</dt>
+                  <dd>{formatCurrency(process.declaredIncome)}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Renda analisada</dt>
+                  <dd>{formatCurrency(process.analyzedIncome)}</dd>
+                </div>
+              </>
+            ) : (
+              <div>
+                <dt className="text-slate-500">Renda declarada (cliente)</dt>
+                <dd>{formatCurrency(process.declaredIncome)}</dd>
+              </div>
+            )}
           </dl>
           <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900">
-            Indicadores internos de pré-análise. Sujeitos à análise da instituição
-            financeira. O sistema não concede crédito.
+            {isCorrespondent
+              ? "Portal operacional do correspondente. Análise financeira e decisão ficam com o analista."
+              : "Indicadores internos de pré-análise. Sujeitos à análise da instituição financeira. O sistema não concede crédito."}
           </p>
         </section>
 
@@ -96,20 +134,42 @@ export default async function ProcessDetailPage({
           <p className="mt-2 text-sm text-slate-600">
             Status atual: {PROCESS_STATUS_LABELS[process.status as ProcessStatus]}
           </p>
-          <div className="mt-4">
-            <ProcessActions
-              processId={process.id}
-              allowedTransitions={process.allowedTransitions}
-            />
-          </div>
+          {canTransition ? (
+            <div className="mt-4">
+              <ProcessActions
+                processId={process.id}
+                allowedTransitions={process.allowedTransitions}
+              />
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-slate-500">
+              Transições de status são feitas pela equipe de análise.
+            </p>
+          )}
         </section>
       </div>
 
-      <ProcessDossierPanel processId={process.id} />
+      <ProcessOperationalPanel
+        processId={process.id}
+        canRespondPendencies={canRespond}
+      />
+
+      {canIssuePortal ? <PortalAccessPanel processId={process.id} /> : null}
+
+      <ProcessPendenciesPanel
+        processId={process.id}
+        canWrite={canWritePendencies}
+      />
+
+      {canIntegrations ? (
+        <ProcessIntegrationsPanel processId={process.id} />
+      ) : null}
+
+      {canDecision ? <ProcessDossierPanel processId={process.id} /> : null}
 
       <ProcessDocumentsPanel processId={process.id} />
 
-      <ProcessFinancialPanel processId={process.id} />
+      {canFinancial ? <ProcessFinancialPanel processId={process.id} /> : null}
 
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="font-serif text-xl">Histórico de status</h2>

@@ -1,6 +1,7 @@
 # Credit Decision Support — ZION CREDIT (FASE 5)
 
-**STATUS: IN PROGRESS**
+> **STATUS: PRODUCTION CLOSED** — baseline em [`BASELINE_FASE_5.md`](./BASELINE_FASE_5.md).  
+> Não evoluir operação/WhatsApp/portais aqui. FASE 6 em [`OPERATIONS.md`](./OPERATIONS.md).
 
 ## Princípio
 

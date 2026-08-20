@@ -9,14 +9,16 @@ import {
   LogOut,
   Users,
 } from "lucide-react";
+import type { UserRole } from "@/domain/rbac/permissions";
+import { navItemsForRole } from "@/domain/rbac/permissions";
 import { cn } from "@/lib/utils";
 
-const NAV = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/clients", label: "Clientes", icon: Users },
-  { href: "/processes", label: "Processos", icon: ClipboardList },
-  { href: "/audit", label: "Auditoria", icon: FileSearch },
-];
+const ICONS = {
+  "/dashboard": LayoutDashboard,
+  "/clients": Users,
+  "/processes": ClipboardList,
+  "/audit": FileSearch,
+} as const;
 
 export function AppShell({
   children,
@@ -29,6 +31,8 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const nav = navItemsForRole(userRole as UserRole);
+  const isCorrespondent = userRole === "CORRESPONDENTE";
 
   async function handleLogout() {
     await fetch("/api/v1/auth", { method: "DELETE" });
@@ -44,13 +48,15 @@ export function AppShell({
             ZION CREDIT
           </p>
           <h1 className="mt-1.5 font-serif text-xl leading-tight text-white">
-            Pré-Crédito Imobiliário
+            {isCorrespondent
+              ? "Portal do Correspondente"
+              : "Pré-Crédito Imobiliário"}
           </h1>
         </div>
         <nav className="flex flex-col gap-0.5 p-2">
-          {NAV.map((item) => {
+          {nav.map((item) => {
             const active = pathname.startsWith(item.href);
-            const Icon = item.icon;
+            const Icon = ICONS[item.href as keyof typeof ICONS] ?? ClipboardList;
             return (
               <Link
                 key={item.href}

@@ -35,13 +35,19 @@ function scenarioFromEnv(filename: string): MockAiScenario {
 function inferTypeFromName(filename: string, known: string[]): string {
   const lower = filename.toLowerCase();
   const map: Array<[RegExp, string]> = [
+    [/simulacao|financiamento.?caixa/, "SIMULACAO_CAIXA"],
+    [/pesquisa.?ir|consulta.?ir/, "PESQUISA_IR"],
+    [/\bdump\b/, "DUMP"],
+    [/fgts/, "EXTRATO_FGTS"],
+    [/imposto.?de.?renda|irpf|declaracao.?ir/, "IMPOSTO_RENDA"],
+    [/fator.?social|mcmv|minha.?casa/, "FATOR_SOCIAL"],
     [/extrato|bank|nubank/, "EXTRATO_BANCARIO"],
     [/fatura|cartao|midway/, "FATURA_CARTAO"],
-    [/contracheque|holerite|payroll/, "CONTRACHEQUE"],
-    [/ctps/, "CTPS_DIGITAL"],
-    [/endereco|comprovante/, "COMPROVANTE_ENDERECO"],
+    [/contracheque|holerite|payroll|pro.?labore|comprovante.?renda/, "COMPROVANTE_RENDA"],
+    [/ctps|carteira.?de.?trabalho/, "CTPS_DIGITAL"],
+    [/endereco/, "COMPROVANTE_ENDERECO"],
     [/certidao|casamento|nascimento/, "CERTIDAO_ESTADO_CIVIL"],
-    [/rg|identidade/, "RG_CPF"],
+    [/rg|identidade|cnh|passaporte/, "RG_CPF"],
     [/cpf/, "RG_CPF"],
   ];
   for (const [re, code] of map) {

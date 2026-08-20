@@ -67,17 +67,21 @@ Commitments + Simulation SAC/PRICE
 financial_analysis_snapshots (imutável + hash)
 ```
 
-## Credit Decision Support (FASE 5)
+## Credit Decision Support (FASE 5 — PRODUCTION CLOSED)
 
 ```text
-checklist + consistency + pendencies + immutable snapshot
+checklist + consistency + pendencies + immutable financial snapshot
         ↓
-Process Dossier (fatores / indicativo)
+DecisionSupportSnapshot (credit-support-v1) + explainable factors
         ↓
-Analista humano
+Process Dossier + Analyst Review (human)
 ```
 
-Módulo: `src/modules/credit-decision-support/`
+Baseline: [`BASELINE_FASE_5.md`](./BASELINE_FASE_5.md)
+
+## Operations (FASE 6 — IN PROGRESS)
+
+Workflow operacional, portais, notificações, SLA, adapters — ver [`OPERATIONS.md`](./OPERATIONS.md).
 
 ## Estrutura
 

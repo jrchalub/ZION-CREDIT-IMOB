@@ -43,6 +43,7 @@ export async function login(input: {
       role: users.role,
       passwordHash: users.passwordHash,
       active: users.active,
+      correspondentId: users.correspondentId,
     })
     .from(users)
     .where(eq(users.email, email))
@@ -64,6 +65,7 @@ export async function login(input: {
     email: user.email,
     fullName: user.fullName,
     role: user.role as UserRole,
+    correspondentId: user.correspondentId ?? null,
   };
 
   const token = await createSessionToken(session);

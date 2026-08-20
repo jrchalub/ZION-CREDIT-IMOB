@@ -7,6 +7,12 @@ import {
   processNumberSequences,
   processStatusHistory,
 } from "@/db/schema";
+import {
+  assertClientReadable,
+  assertProcessOwnedBySession,
+  isCorrespondentRole,
+  processOwnershipCondition,
+} from "@/domain/access/scope";
 import { writeAuditLog } from "@/domain/audit/service";
 import { generateChecklistForProcess } from "@/domain/documents/checklist";
 import {
@@ -92,12 +98,14 @@ export async function listProcesses(
     status?: ProcessStatus;
   },
 ) {
+  const ownership = processOwnershipCondition(session);
   const where = opts.status
     ? and(
         eq(financingProcesses.tenantId, session.tenantId),
         eq(financingProcesses.status, opts.status),
+        ownership,
       )
-    : eq(financingProcesses.tenantId, session.tenantId);
+    : and(eq(financingProcesses.tenantId, session.tenantId), ownership);
 
   const [rows, totalRow] = await Promise.all([
     db
@@ -147,6 +155,7 @@ export async function getProcess(session: SessionPayload, id: string) {
     .limit(1);
 
   if (!row) throw new AppError(404, "Processo não encontrado", "PROCESS_NOT_FOUND");
+  assertProcessOwnedBySession(session, row.process);
 
   const history = await db
     .select()
@@ -159,13 +168,18 @@ export async function getProcess(session: SessionPayload, id: string) {
     )
     .orderBy(desc(processStatusHistory.createdAt));
 
+  const hideInternal = isCorrespondentRole(session);
+
   return {
     ...row.process,
     clientName: row.clientName,
     clientCpf: row.clientCpf,
     clientProfession: row.clientProfession,
     declaredIncome: row.declaredIncome,
-    allowedTransitions: getAllowedTransitions(row.process.status as ProcessStatus),
+    analyzedIncome: hideInternal ? null : row.process.analyzedIncome,
+    allowedTransitions: hideInternal
+      ? []
+      : getAllowedTransitions(row.process.status as ProcessStatus),
     statusHistory: history,
   };
 }
@@ -182,9 +196,22 @@ export async function createProcess(
     .limit(1);
 
   if (!client) throw new AppError(404, "Cliente não encontrado", "CLIENT_NOT_FOUND");
+  await assertClientReadable(session, input.clientId);
 
   const year = new Date().getFullYear();
   const processNumber = await nextProcessNumber(session.tenantId, year);
+
+  const forcedCorrespondentId = isCorrespondentRole(session)
+    ? session.correspondentId
+    : (input.correspondentId ?? null);
+
+  if (isCorrespondentRole(session) && !forcedCorrespondentId) {
+    throw new AppError(
+      400,
+      "Usuário correspondente sem vínculo organizacional",
+      "CORRESPONDENT_NOT_LINKED",
+    );
+  }
 
   const [created] = await db
     .insert(financingProcesses)
@@ -193,8 +220,8 @@ export async function createProcess(
       processNumber,
       clientId: input.clientId,
       incomeProfile: input.incomeProfile,
-      correspondentId: input.correspondentId ?? null,
-      analystId: input.analystId ?? null,
+      correspondentId: forcedCorrespondentId,
+      analystId: isCorrespondentRole(session) ? null : (input.analystId ?? null),
       developmentId: input.developmentId ?? null,
       unitId: input.unitId ?? null,
       intendedBank: input.intendedBank ?? null,
@@ -307,13 +334,16 @@ export async function transitionProcess(
 }
 
 export async function getDashboardMetrics(session: SessionPayload) {
+  const ownership = processOwnershipCondition(session);
+  const where = and(eq(financingProcesses.tenantId, session.tenantId), ownership);
+
   const rows = await db
     .select({
       status: financingProcesses.status,
       value: count(),
     })
     .from(financingProcesses)
-    .where(eq(financingProcesses.tenantId, session.tenantId))
+    .where(where)
     .groupBy(financingProcesses.status);
 
   const byStatus = Object.fromEntries(
@@ -329,7 +359,7 @@ export async function getDashboardMetrics(session: SessionPayload) {
       avgHours: sql<number>`coalesce(avg(extract(epoch from (${financingProcesses.lastMovedAt} - ${financingProcesses.openedAt})) / 3600), 0)`,
     })
     .from(financingProcesses)
-    .where(eq(financingProcesses.tenantId, session.tenantId));
+    .where(where);
 
   return {
     byStatus,

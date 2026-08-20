@@ -1,70 +1,64 @@
 # Phases — ZION CREDIT
 
+## FASE 1 — Foundation
+
+**STATUS: PRODUCTION CLOSED**
+
+## FASE 2 — Document Management
+
+**STATUS: PRODUCTION CLOSED**
+
 ## FASE 3 — Document Intelligence
 
 **STATUS: PRODUCTION CLOSED**
 
-Baseline (2026-08-20):
-
-- 23 testes passando (baseline histórico)
-- Migration `0002_*` aplicada
-- Worker / Mock OCR / Mock AI / Human-in-the-loop / Auditoria funcionais
-
-### Freeze
-
-Alterações em `src/modules/document-intelligence/**` apenas para **bugfix crítico**.
+Baseline: Mock OCR/AI, evidências, worker, human-in-the-loop.  
+Freeze: `src/modules/document-intelligence/**` — só bugfix.
 
 ## FASE 4 — Financial Analysis
 
 **STATUS: PRODUCTION CLOSED**
 
-Baseline de fechamento:
-
-- Snapshot financeiro **imutável** (`financial_analysis_snapshots`) com `RULE_VERSION=rules-v1`
-- Hash SHA-256 do payload (auditoria)
-- Hardening: 15 cenários de qualidade (determinístico)
-- Extratos duplicados ignorados via `duplicateOfDocumentId`
-- Migration `0003_*` + coluna `rule_version` + snapshots
-- Motor: classificação, renda (mediana), cartão, dívidas, SAC/PRICE, capacidade
-- Sem aprovação de crédito bancário
-
-### Freeze
-
-Alterações em `src/modules/financial-analysis/**` apenas para **bugfix crítico**.
-
-Novas regras = **nova versão** (`rules-v2`, `income-v2`). Snapshots antigos **não** são reescritos.
-
-Disclaimer obrigatório:
-
-> Resultado de pré-análise interna. Não representa aprovação ou reprovação de crédito por instituição financeira.
+Baseline: renda defensável (mediana), snapshot imutável `rules-v1`.  
+Freeze: `src/modules/financial-analysis/**` — só bugfix.
 
 ## FASE 5 — Credit Decision Support
 
-**STATUS: IN PROGRESS**
+**STATUS: PRODUCTION CLOSED**
 
-Dossiê explicável para o analista (sem score-caixa-preta).
+Baseline completo: [`BASELINE_FASE_5.md`](./BASELINE_FASE_5.md)
 
-Entregue:
+### Freeze
 
-- `decision_support_snapshots` (imutável, `credit-support-v1`)
-- `decision_factors` com origem/evidência
-- Matriz categórica (OK / Atenção / Crítico)
-- `credit_analyst_reviews` (parecer com justificativa)
-- Dossiê completo `/processes/:id/dossier`
-- APIs dossier + analyst-review
+Alterações em `src/modules/credit-decision-support/**` apenas para **bugfix crítico**.
 
-Docs: [`CREDIT_DECISION_SUPPORT.md`](./CREDIT_DECISION_SUPPORT.md)
+## FASE 6 — Operations & Integrations
+
+**STATUS: PRODUCTION CLOSED**
+
+Baseline: [`OPERATIONS.md`](./OPERATIONS.md)
+
+Incrementos: 6.1 núcleo · 6.2 correspondente · 6.3 portal cliente · 6.4 pendências · 6.5 WhatsApp · **6.6 IntegrationProvider**
+
+### Freeze
+
+`src/modules/operations/**` — só bugfix crítico.  
+Não reescrever crédito/IA nesta fase.
+
+## FASE 7 — Institutional Financing Integrations
+
+**STATUS: PLANNED**
+
+`FinancingProvider` multi-instituição (Caixa / Banco X / Banco Y) sem acoplar o domínio.
 
 ## Roadmap
 
 | Fase | Nome | Status |
 |------|------|--------|
-| 1 | Foundation | CLOSED |
-| 2 | Documentos | CLOSED |
+| 1 | Foundation | **PRODUCTION CLOSED** |
+| 2 | Document Management | **PRODUCTION CLOSED** |
 | 3 | Document Intelligence | **PRODUCTION CLOSED** |
 | 4 | Financial Analysis | **PRODUCTION CLOSED** |
-| 5 | Credit Decision Support | **IN PROGRESS** |
-| 6 | Parecer | PLANNED |
-| 7 | Portal do cliente | PLANNED |
-| 8 | WhatsApp | PLANNED |
-| 9 | Hardening / produção | PLANNED |
+| 5 | Credit Decision Support | **PRODUCTION CLOSED** |
+| 6 | Operations & Integrations | **PRODUCTION CLOSED** |
+| 7 | Institutional Financing Integrations | PLANNED |

@@ -43,6 +43,41 @@
       "when": 1787262879377,
       "tag": "0005_numerous_serpent_society",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787263807351,
+      "tag": "0006_brown_lady_ursula",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787264415695,
+      "tag": "0007_loud_grim_reaper",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787264886492,
+      "tag": "0008_large_bastion",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787265600000,
+      "tag": "0009_pendency_self_service",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787266200000,
+      "tag": "0010_integration_calls",
+      "breakpoints": true
     }
   ]
 }
