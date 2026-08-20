@@ -17,6 +17,10 @@ import {
   buildStorageKey,
   validateUploadBuffer,
 } from "@/domain/documents/upload-validation";
+import {
+  assertCanAddDocumentToChecklistItem,
+  syncChecklistItemFromDocuments,
+} from "@/domain/documents/upload-policy";
 import { randomUUID } from "node:crypto";
 
 export const reviewDocumentSchema = z.object({
@@ -87,9 +91,13 @@ export async function uploadDocument(
   if (!checklistItem) {
     throw new AppError(404, "Item de checklist não encontrado", "CHECKLIST_NOT_FOUND");
   }
-  if (checklistItem.status === "NAO_APLICAVEL") {
-    throw new AppError(400, "Item marcado como não aplicável", "NOT_APPLICABLE");
-  }
+
+  await assertCanAddDocumentToChecklistItem({
+    tenantId: session.tenantId,
+    processId: input.processId,
+    checklistItem,
+    lockWhenValidated: false,
+  });
 
   const validated = await validateUploadBuffer({
     filename: input.filename,
@@ -169,14 +177,7 @@ export async function uploadDocument(
     });
   }
 
-  await db
-    .update(processChecklistItems)
-    .set({
-      status: "ENVIADO",
-      documentId: created.id,
-      updatedAt: new Date(),
-    })
-    .where(eq(processChecklistItems.id, checklistItem.id));
+  await syncChecklistItemFromDocuments(session.tenantId, checklistItem.id);
 
   // Close open pendency for this checklist item if any (staff upload → resolve)
   await db
@@ -309,18 +310,10 @@ export async function reviewDocument(
     .returning();
 
   if (document.checklistItemId) {
-    await db
-      .update(processChecklistItems)
-      .set({
-        status: input.action === "VALIDAR" ? "VALIDADO" : "REJEITADO",
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(processChecklistItems.id, document.checklistItemId),
-          eq(processChecklistItems.tenantId, session.tenantId),
-        ),
-      );
+    await syncChecklistItemFromDocuments(
+      session.tenantId,
+      document.checklistItemId,
+    );
   }
 
   if (input.action === "REJEITAR") {

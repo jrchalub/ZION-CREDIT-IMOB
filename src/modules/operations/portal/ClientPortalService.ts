@@ -14,6 +14,7 @@ import {
   buildStorageKey,
   validateUploadBuffer,
 } from "@/domain/documents/upload-validation";
+import { assertCanAddDocumentToChecklistItem, syncChecklistItemFromDocuments } from "@/domain/documents/upload-policy";
 import { AppError } from "@/lib/api";
 import { enqueueDocumentProcessing } from "@/infra/queues";
 import { getStorageProvider } from "@/infra/storage";
@@ -79,6 +80,7 @@ async function buildClientPortalView(access: PortalTokenRecord) {
       item: processChecklistItems,
       typeName: documentTypes.name,
       typeCode: documentTypes.code,
+      allowsMultiple: documentTypes.allowsMultiple,
     })
     .from(processChecklistItems)
     .innerJoin(
@@ -94,6 +96,34 @@ async function buildClientPortalView(access: PortalTokenRecord) {
     .orderBy(asc(processChecklistItems.sortOrder));
 
   const applicable = checklist.filter((c) => c.item.status !== "NAO_APLICAVEL");
+  const itemIds = applicable.map((c) => c.item.id);
+  const uploaded =
+    itemIds.length === 0
+      ? []
+      : await db
+          .select({
+            id: documents.id,
+            checklistItemId: documents.checklistItemId,
+            originalFilename: documents.originalFilename,
+            status: documents.status,
+          })
+          .from(documents)
+          .where(
+            and(
+              eq(documents.processId, access.processId),
+              eq(documents.tenantId, access.tenantId),
+              inArray(documents.checklistItemId, itemIds),
+            ),
+          )
+          .orderBy(asc(documents.createdAt));
+
+  const filesByItem = new Map<string, typeof uploaded>();
+  for (const file of uploaded) {
+    if (!file.checklistItemId) continue;
+    const list = filesByItem.get(file.checklistItemId) ?? [];
+    list.push(file);
+    filesByItem.set(file.checklistItemId, list);
+  }
   const done = applicable.filter(
     (c) => c.item.status === "VALIDADO" || c.item.status === "ENVIADO",
   );
@@ -138,18 +168,28 @@ async function buildClientPortalView(access: PortalTokenRecord) {
     processNumber: row.process.processNumber,
     statusMessage: CLIENT_STATUS_COPY[stage],
     progressPercent: percent,
-    documents: applicable.map((c) => ({
-      checklistItemId: c.item.id,
-      label: c.item.label,
-      typeName: c.typeName,
-      status: c.item.status,
-      needsUpload:
-        c.item.status === "PENDENTE" || c.item.status === "REJEITADO",
-      canUpload:
-        c.item.status === "PENDENTE" ||
-        c.item.status === "REJEITADO" ||
-        c.item.status === "ENVIADO",
-    })),
+    documents: applicable.map((c) => {
+      const files = filesByItem.get(c.item.id) ?? [];
+      return {
+        checklistItemId: c.item.id,
+        label: c.item.label,
+        typeName: c.typeName,
+        status: c.item.status,
+        allowsMultiple: c.allowsMultiple,
+        files: files.map((file) => ({
+          id: file.id,
+          originalFilename: file.originalFilename,
+          status: file.status,
+        })),
+        needsUpload:
+          c.item.status === "PENDENTE" || c.item.status === "REJEITADO",
+        canUpload:
+          c.item.status === "PENDENTE" ||
+          c.item.status === "REJEITADO" ||
+          (c.allowsMultiple && c.item.status === "ENVIADO"),
+        canAddMore: c.allowsMultiple && c.item.status === "ENVIADO",
+      };
+    }),
     pendencies: openPendencies.map((p) => ({
       id: p.id,
       type: p.type,
@@ -209,12 +249,13 @@ export async function uploadViaPortal(
   if (!checklistItem) {
     throw new AppError(404, "Item não encontrado", "CHECKLIST_NOT_FOUND");
   }
-  if (checklistItem.status === "NAO_APLICAVEL") {
-    throw new AppError(400, "Item não aplicável", "NOT_APPLICABLE");
-  }
-  if (checklistItem.status === "VALIDADO") {
-    throw new AppError(400, "Documento já validado", "ALREADY_VALIDATED");
-  }
+
+  await assertCanAddDocumentToChecklistItem({
+    tenantId: access.tenantId,
+    processId: access.processId,
+    checklistItem,
+    lockWhenValidated: true,
+  });
 
   const validated = await validateUploadBuffer({
     filename: input.filename,
@@ -283,14 +324,7 @@ export async function uploadViaPortal(
     })
     .returning();
 
-  await db
-    .update(processChecklistItems)
-    .set({
-      status: "ENVIADO",
-      documentId: created.id,
-      updatedAt: new Date(),
-    })
-    .where(eq(processChecklistItems.id, checklistItem.id));
+  await syncChecklistItemFromDocuments(access.tenantId, checklistItem.id);
 
   await markPendencySubmitted({
     tenantId: access.tenantId,

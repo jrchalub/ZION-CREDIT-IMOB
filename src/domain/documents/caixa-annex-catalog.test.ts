@@ -26,4 +26,10 @@ describe("CAIXA_ANNEXES", () => {
       "Anexo 1 — Simulação de Financiamento Caixa",
     );
   });
+
+  it("explains multi-file uploads for renda, CTPS and outros", () => {
+    expect(getAnnexByCode("COMPROVANTE_RENDA")?.multipleHint).toMatch(/mesmo anexo/);
+    expect(getAnnexByCode("CTPS_DIGITAL")?.multipleHint).toMatch(/física e a Digital/);
+    expect(getAnnexByCode("OUTROS_DOCUMENTOS")?.multipleHint).toMatch(/auxiliares/);
+  });
 });

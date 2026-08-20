@@ -14,6 +14,13 @@ type PortalView = {
     status: string;
     needsUpload: boolean;
     canUpload: boolean;
+    canAddMore: boolean;
+    allowsMultiple: boolean;
+    files: Array<{
+      id: string;
+      originalFilename: string;
+      status: string;
+    }>;
   }>;
   pendencies: Array<{
     id: string;
@@ -54,21 +61,25 @@ export function ClientPortalPage({ token }: { token: string }) {
     void reload();
   }, [reload]);
 
-  async function onUpload(checklistItemId: string, file: File) {
+  async function onUpload(checklistItemId: string, fileList: FileList | File[]) {
+    const files = Array.from(fileList);
+    if (files.length === 0) return;
     setBusyId(checklistItemId);
     setError(null);
     try {
-      const form = new FormData();
-      form.append("file", file);
-      form.append("checklistItemId", checklistItemId);
-      const res = await fetch(
-        `/api/v1/portal/${encodeURIComponent(token)}/documents`,
-        { method: "POST", body: form },
-      );
-      const json = await res.json();
-      if (!res.ok) {
-        setError(json?.error?.message ?? "Falha no envio");
-        return;
+      for (const file of files) {
+        const form = new FormData();
+        form.append("file", file);
+        form.append("checklistItemId", checklistItemId);
+        const res = await fetch(
+          `/api/v1/portal/${encodeURIComponent(token)}/documents`,
+          { method: "POST", body: form },
+        );
+        const json = await res.json();
+        if (!res.ok) {
+          setError(json?.error?.message ?? "Falha no envio");
+          return;
+        }
       }
       await reload();
     } finally {
@@ -114,7 +125,7 @@ export function ClientPortalPage({ token }: { token: string }) {
     return <p className="text-center text-sm text-slate-500">Carregando…</p>;
   }
 
-  const needed = data.documents.filter((d) => d.needsUpload);
+  const needed = data.documents.filter((d) => d.needsUpload || d.canAddMore);
 
   return (
     <div className="space-y-6">
@@ -154,8 +165,22 @@ export function ClientPortalPage({ token }: { token: string }) {
               </span>
               <span>
                 <span className="font-medium">{doc.label}</span>
+                {doc.files.length > 0 ? (
+                  <span className="ml-1 text-slate-500">
+                    · {doc.files.length} arquivo{doc.files.length === 1 ? "" : "s"}
+                  </span>
+                ) : null}
                 {doc.status === "REJEITADO" ? (
                   <span className="ml-1 text-amber-700">— reenvie</span>
+                ) : null}
+                {doc.files.length > 0 ? (
+                  <ul className="mt-1 space-y-0.5 text-xs text-slate-500">
+                    {doc.files.map((file) => (
+                      <li key={file.id}>
+                        {file.originalFilename} · {file.status}
+                      </li>
+                    ))}
+                  </ul>
                 ) : null}
               </span>
             </li>
@@ -165,23 +190,39 @@ export function ClientPortalPage({ token }: { token: string }) {
 
       {needed.length > 0 ? (
         <section className="rounded-lg border border-amber-200 bg-amber-50/50 p-5">
-          <h2 className="font-serif text-xl text-slate-900">Precisamos de</h2>
+          <h2 className="font-serif text-xl text-slate-900">
+            {needed.some((d) => d.needsUpload)
+              ? "Precisamos de"
+              : "Adicionar arquivos"}
+          </h2>
           <ul className="mt-4 space-y-4">
             {needed.map((doc) => (
               <li key={doc.checklistItemId} className="text-sm">
                 <p className="font-medium">📄 {doc.label}</p>
+                {doc.canAddMore ? (
+                  <p className="mt-1 text-xs text-slate-600">
+                    Você já enviou {doc.files.length} arquivo
+                    {doc.files.length === 1 ? "" : "s"}. Pode adicionar outro neste
+                    mesmo item.
+                  </p>
+                ) : null}
                 <label className="mt-2 inline-flex cursor-pointer items-center rounded-md bg-slate-900 px-4 py-2 text-xs font-medium text-white hover:bg-slate-800">
                   {busyId === doc.checklistItemId
                     ? "Enviando…"
-                    : "Enviar documento"}
+                    : doc.canAddMore
+                      ? "Adicionar arquivo"
+                      : "Enviar documento"}
                   <input
                     type="file"
                     className="hidden"
                     accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*"
+                    multiple={doc.allowsMultiple}
                     disabled={busyId === doc.checklistItemId}
                     onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) void onUpload(doc.checklistItemId, file);
+                      const selected = e.target.files;
+                      if (selected && selected.length > 0) {
+                        void onUpload(doc.checklistItemId, selected);
+                      }
                       e.target.value = "";
                     }}
                   />

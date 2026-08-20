@@ -25,6 +25,7 @@ export type CaixaAnnex = {
   allowsMultiple?: boolean;
   conditionKey?: string;
   validityDays?: number;
+  multipleHint?: string;
 };
 
 /** Tipos usados pela análise financeira / IA, fora do checklist de anexos Caixa. */
@@ -99,6 +100,8 @@ export const CAIXA_ANNEXES: readonly CaixaAnnex[] = [
     category: "RENDA",
     requirement: "OBRIGATORIO",
     allowsMultiple: true,
+    multipleHint:
+      "Envie todos os comprovantes neste mesmo anexo (contracheque, extratos, pró-labore…).",
   },
   {
     annexNumber: 5,
@@ -146,6 +149,8 @@ export const CAIXA_ANNEXES: readonly CaixaAnnex[] = [
     category: "TRABALHO",
     requirement: "OBRIGATORIO",
     allowsMultiple: true,
+    multipleHint:
+      "Envie a Carteira de Trabalho física e a Digital neste mesmo anexo.",
   },
   {
     annexNumber: 10,
@@ -177,6 +182,7 @@ export const CAIXA_ANNEXES: readonly CaixaAnnex[] = [
     category: "GERAL",
     requirement: "OPCIONAL",
     allowsMultiple: true,
+    multipleHint: "Adicione quantos documentos auxiliares forem necessários.",
   },
 ];
 
@@ -186,4 +192,12 @@ export function annexLabel(annex: CaixaAnnex) {
 
 export function getAnnexByCode(code: string) {
   return CAIXA_ANNEXES.find((annex) => annex.code === code) ?? null;
+}
+
+export function annexMultipleHint(annex: CaixaAnnex | null) {
+  if (!annex?.allowsMultiple) return null;
+  return (
+    annex.multipleHint ??
+    "Você pode enviar mais de um arquivo neste anexo."
+  );
 }

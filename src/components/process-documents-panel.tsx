@@ -3,6 +3,14 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+type ChecklistFile = {
+  id: string;
+  originalFilename: string;
+  mimeType: string;
+  status: string;
+  sizeBytes: number;
+};
+
 type ChecklistItem = {
   id: string;
   label: string;
@@ -16,6 +24,9 @@ type ChecklistItem = {
   validityDays: number | null;
   notes: string | null;
   conditionKey: string | null;
+  allowsMultiple: boolean;
+  multipleHint: string | null;
+  files: ChecklistFile[];
 };
 
 type DocumentRow = {
@@ -69,21 +80,25 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
     void reload();
   }, [reload]);
 
-  async function onUpload(checklistItemId: string, file: File) {
+  async function onUpload(checklistItemId: string, fileList: FileList | File[]) {
+    const files = Array.from(fileList);
+    if (files.length === 0) return;
     setBusyId(checklistItemId);
     setError(null);
     try {
-      const form = new FormData();
-      form.append("file", file);
-      form.append("checklistItemId", checklistItemId);
-      const response = await fetch(`/api/v1/processes/${processId}/documents`, {
-        method: "POST",
-        body: form,
-      });
-      const json = await response.json();
-      if (!response.ok) {
-        setError(json?.error?.message ?? "Falha no upload");
-        return;
+      for (const file of files) {
+        const form = new FormData();
+        form.append("file", file);
+        form.append("checklistItemId", checklistItemId);
+        const response = await fetch(`/api/v1/processes/${processId}/documents`, {
+          method: "POST",
+          body: form,
+        });
+        const json = await response.json();
+        if (!response.ok) {
+          setError(json?.error?.message ?? "Falha no upload");
+          return;
+        }
       }
       await reload();
     } finally {
@@ -181,11 +196,28 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
         {error ? <p className="mt-3 text-sm text-rose-700">{error}</p> : null}
 
         <ul className="mt-5 space-y-3">
-          {items.map((item) => (
+          {items.map((item) => {
+            const files = item.files ?? [];
+            const canAdd =
+              item.status !== "NAO_APLICAVEL" &&
+              (item.allowsMultiple
+                ? true
+                : item.status === "PENDENTE" || item.status === "REJEITADO");
+            const uploadLabel =
+              busyId === item.id
+                ? "Enviando..."
+                : files.length === 0
+                  ? "Upload"
+                  : item.allowsMultiple
+                    ? "Adicionar arquivo"
+                    : "Reenviar";
+
+            return (
             <li
               key={item.id}
-              className="flex flex-col gap-3 rounded-md border border-slate-200 p-3 md:flex-row md:items-start md:justify-between"
+              className="flex flex-col gap-3 rounded-md border border-slate-200 p-3"
             >
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div className="flex min-w-0 gap-3">
                 {item.annexNumber ? (
                   <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">
@@ -196,8 +228,12 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
                   <p className="text-sm font-medium">{item.label}</p>
                   <p className="text-xs text-slate-500">
                     {item.documentTypeCode} · {item.requirement} · {item.status}
+                    {item.allowsMultiple ? " · vários arquivos" : ""}
                     {item.validityDays
                       ? ` · validade ${item.validityDays} dias`
+                      : ""}
+                    {files.length > 0
+                      ? ` · ${files.length} arquivo${files.length === 1 ? "" : "s"}`
                       : ""}
                     {item.notes ? ` · ${item.notes}` : ""}
                   </p>
@@ -206,20 +242,28 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
                       {item.documentTypeDescription}
                     </p>
                   ) : null}
+                  {item.multipleHint ? (
+                    <p className="mt-1 text-xs font-medium text-teal-800">
+                      {item.multipleHint}
+                    </p>
+                  ) : null}
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 md:shrink-0">
-                {item.status === "PENDENTE" || item.status === "REJEITADO" ? (
+                {canAdd ? (
                   <label className="cursor-pointer rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
-                    {busyId === item.id ? "Enviando..." : "Upload"}
+                    {uploadLabel}
                     <input
                       type="file"
                       className="hidden"
                       accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*"
+                      multiple={item.allowsMultiple}
                       disabled={busyId === item.id}
                       onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) void onUpload(item.id, file);
+                        const selected = e.target.files;
+                        if (selected && selected.length > 0) {
+                          void onUpload(item.id, selected);
+                        }
                         e.currentTarget.value = "";
                       }}
                     />
@@ -252,18 +296,59 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
                     Não se aplica
                   </button>
                 ) : null}
-                {item.documentId ? (
-                  <button
-                    type="button"
-                    className="rounded-md border border-teal-700 px-3 py-1.5 text-xs text-teal-800 hover:bg-teal-50"
-                    onClick={() => void openViewer(item.documentId!)}
-                  >
-                    Visualizar
-                  </button>
-                ) : null}
               </div>
+              </div>
+              {files.length > 0 ? (
+                <ul className="space-y-1 border-t border-slate-100 pt-2">
+                  {files.map((file) => (
+                    <li
+                      key={file.id}
+                      className="flex flex-wrap items-center justify-between gap-2 text-xs"
+                    >
+                      <p className="min-w-0 truncate text-slate-700">
+                        {file.originalFilename}
+                        <span className="ml-2 text-slate-400">{file.status}</span>
+                      </p>
+                      <div className="flex gap-1">
+                        <Link
+                          href={`/documents/${file.id}/review`}
+                          className="rounded px-2 py-1 text-indigo-800 hover:bg-indigo-50"
+                        >
+                          Revisar
+                        </Link>
+                        <button
+                          type="button"
+                          className="rounded px-2 py-1 text-teal-800 hover:bg-teal-50"
+                          onClick={() => void openViewer(file.id)}
+                        >
+                          Ver
+                        </button>
+                        {file.status !== "VALIDADO" ? (
+                          <button
+                            type="button"
+                            className="rounded px-2 py-1 text-emerald-800 hover:bg-emerald-50"
+                            onClick={() => void review(file.id, "VALIDAR")}
+                          >
+                            Validar
+                          </button>
+                        ) : null}
+                        {file.status !== "REJEITADO" ? (
+                          <button
+                            type="button"
+                            className="rounded px-2 py-1 text-rose-800 hover:bg-rose-50"
+                            onClick={() => void review(file.id, "REJEITAR")}
+                          >
+                            Rejeitar
+                          </button>
+                        ) : null}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </li>
-          ))}
+            );
+          })}
         </ul>
       </section>
 

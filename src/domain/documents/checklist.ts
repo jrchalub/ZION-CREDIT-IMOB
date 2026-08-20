@@ -1,7 +1,8 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   documentTypes,
+  documents,
   financingProcesses,
   incomeProfileDocumentRequirements,
   processChecklistItems,
@@ -9,7 +10,7 @@ import {
 import { loadProcessForSession } from "@/domain/access/scope";
 import { AppError } from "@/lib/api";
 import type { SessionPayload } from "@/lib/auth/session";
-import { getAnnexByCode, type IncomeProfile } from "./caixa-annex-catalog";
+import { annexMultipleHint, getAnnexByCode, type IncomeProfile } from "./caixa-annex-catalog";
 
 type Profile = IncomeProfile;
 
@@ -254,6 +255,7 @@ export async function listChecklist(session: SessionPayload, processId: string) 
       documentTypeCode: documentTypes.code,
       documentTypeName: documentTypes.name,
       documentTypeDescription: documentTypes.description,
+      allowsMultiple: documentTypes.allowsMultiple,
     })
     .from(processChecklistItems)
     .innerJoin(
@@ -275,6 +277,37 @@ export async function listChecklist(session: SessionPayload, processId: string) 
         row.item.notes === RETIRED_NOTES
       ),
   );
+
+  const itemIds = visible.map((row) => row.item.id);
+  const files =
+    itemIds.length === 0
+      ? []
+      : await db
+          .select({
+            id: documents.id,
+            checklistItemId: documents.checklistItemId,
+            originalFilename: documents.originalFilename,
+            mimeType: documents.mimeType,
+            status: documents.status,
+            sizeBytes: documents.sizeBytes,
+          })
+          .from(documents)
+          .where(
+            and(
+              eq(documents.processId, processId),
+              eq(documents.tenantId, session.tenantId),
+              inArray(documents.checklistItemId, itemIds),
+            ),
+          )
+          .orderBy(asc(documents.createdAt));
+
+  const filesByItem = new Map<string, typeof files>();
+  for (const file of files) {
+    if (!file.checklistItemId) continue;
+    const list = filesByItem.get(file.checklistItemId) ?? [];
+    list.push(file);
+    filesByItem.set(file.checklistItemId, list);
+  }
 
   const scored = visible.filter((i) => i.item.requirement !== "OPCIONAL");
   const totalApplicable = scored.filter(
@@ -300,6 +333,15 @@ export async function listChecklist(session: SessionPayload, processId: string) 
           annex?.description ?? row.documentTypeDescription,
         annexNumber: annex?.annexNumber ?? null,
         validityDays: annex?.validityDays ?? null,
+        allowsMultiple: row.allowsMultiple,
+        multipleHint: annexMultipleHint(annex),
+        files: (filesByItem.get(row.item.id) ?? []).map((file) => ({
+          id: file.id,
+          originalFilename: file.originalFilename,
+          mimeType: file.mimeType,
+          status: file.status,
+          sizeBytes: file.sizeBytes,
+        })),
       };
     }),
     progress: {
