@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: zion-credit-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: zioncredit
+      POSTGRES_PASSWORD: zion_dev_password
+      POSTGRES_DB: zion_credit
+    ports:
+      - "5433:5432"
+    volumes:
+      - zion_credit_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zioncredit -d zion_credit"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: zion-credit-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - zion_credit_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: zion-credit-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: zioncredit
+      MINIO_ROOT_PASSWORD: zion_minio_dev_password
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - zion_credit_minio:/data
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: zion-credit-minio-init
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint: >
+      /bin/sh -c "
+      sleep 3;
+      mc alias set local http://minio:9000 zioncredit zion_minio_dev_password;
+      mc mb --ignore-existing local/zion-credit-documents;
+      mc anonymous set none local/zion-credit-documents;
+      exit 0;
+      "
+
+volumes:
+  zion_credit_pgdata:
+  zion_credit_redis:
+  zion_credit_minio:
