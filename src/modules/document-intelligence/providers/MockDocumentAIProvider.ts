@@ -248,6 +248,20 @@ export class MockDocumentAIProvider implements DocumentAIProvider {
           evidenceText: "01310-100",
           boundingBox: null,
         },
+        {
+          field: "document_date",
+          value: scenario === "LOW_CONFIDENCE" || input.filename.toLowerCase().includes("vencid")
+            ? "2025-01-15"
+            : "2026-07-15",
+          normalizedValue:
+            scenario === "LOW_CONFIDENCE" || input.filename.toLowerCase().includes("vencid")
+              ? "2025-01-15"
+              : "2026-07-15",
+          confidence: baseConfidence,
+          page: 1,
+          evidenceText: "15/07/2026",
+          boundingBox: null,
+        },
       );
     }
 

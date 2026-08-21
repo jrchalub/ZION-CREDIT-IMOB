@@ -11,6 +11,7 @@ import { loadProcessForSession } from "@/domain/access/scope";
 import { AppError } from "@/lib/api";
 import type { SessionPayload } from "@/lib/auth/session";
 import { annexMultipleHint, getAnnexByCode, type IncomeProfile } from "./caixa-annex-catalog";
+import { isExpiredOn } from "./document-validity";
 
 type Profile = IncomeProfile;
 
@@ -290,6 +291,8 @@ export async function listChecklist(session: SessionPayload, processId: string) 
             mimeType: documents.mimeType,
             status: documents.status,
             sizeBytes: documents.sizeBytes,
+            documentDate: documents.documentDate,
+            validUntil: documents.validUntil,
           })
           .from(documents)
           .where(
@@ -341,6 +344,11 @@ export async function listChecklist(session: SessionPayload, processId: string) 
           mimeType: file.mimeType,
           status: file.status,
           sizeBytes: file.sizeBytes,
+          documentDate: file.documentDate,
+          validUntil: file.validUntil,
+          expired:
+            file.status === "EXPIRADO" ||
+            (file.validUntil ? isExpiredOn(file.validUntil) : false),
         })),
       };
     }),

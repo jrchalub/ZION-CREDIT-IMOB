@@ -59,7 +59,7 @@ export function ProcessIntegrationsPanel({ processId }: { processId: string }) {
         <h2 className="font-serif text-xl">Integrações (leitura)</h2>
         <p className="mt-1 text-sm text-slate-600">
           Bureau / leitura bancária via IntegrationProvider — mock ou HTTP.
-          Envio institucional = FASE 7.
+          Envio institucional: painel FASE 7 abaixo.
         </p>
       </div>
 

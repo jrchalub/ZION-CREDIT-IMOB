@@ -47,9 +47,9 @@ Não reescrever crédito/IA nesta fase.
 
 ## FASE 7 — Institutional Financing Integrations
 
-**STATUS: PLANNED**
+**STATUS: BASELINE v1**
 
-`FinancingProvider` multi-instituição (Caixa / Banco X / Banco Y) sem acoplar o domínio.
+`FinancingProvider` multi-instituição (Caixa mock/HTTP) — ver [`FINANCING_INTEGRATIONS.md`](./FINANCING_INTEGRATIONS.md).
 
 ## Roadmap
 
@@ -61,4 +61,4 @@ Não reescrever crédito/IA nesta fase.
 | 4 | Financial Analysis | **PRODUCTION CLOSED** |
 | 5 | Credit Decision Support | **PRODUCTION CLOSED** |
 | 6 | Operations & Integrations | **PRODUCTION CLOSED** |
-| 7 | Institutional Financing Integrations | PLANNED |
+| 7 | Institutional Financing Integrations | **BASELINE v1** |

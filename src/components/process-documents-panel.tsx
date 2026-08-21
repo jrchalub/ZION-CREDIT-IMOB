@@ -9,6 +9,9 @@ type ChecklistFile = {
   mimeType: string;
   status: string;
   sizeBytes: number;
+  documentDate: string | null;
+  validUntil: string | null;
+  expired: boolean;
 };
 
 type ChecklistItem = {
@@ -46,6 +49,13 @@ type Pendency = {
   status: string;
 };
 
+function formatBrDate(iso: string | null) {
+  if (!iso) return null;
+  const [year, month, day] = iso.slice(0, 10).split("-");
+  if (!year || !month || !day) return iso;
+  return `${day}/${month}/${year}`;
+}
+
 export function ProcessDocumentsPanel({ processId }: { processId: string }) {
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [progress, setProgress] = useState({ percent: 0, pending: 0, validated: 0 });
@@ -55,6 +65,7 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const [viewerMime, setViewerMime] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [documentDates, setDocumentDates] = useState<Record<string, string>>({});
 
   const reload = useCallback(async () => {
     setError(null);
@@ -83,6 +94,13 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
   async function onUpload(checklistItemId: string, fileList: FileList | File[]) {
     const files = Array.from(fileList);
     if (files.length === 0) return;
+    const item = items.find((row) => row.id === checklistItemId);
+    if (item?.validityDays && !documentDates[checklistItemId]) {
+      setError(
+        `Informe a data do comprovante (validade de ${item.validityDays} dias).`,
+      );
+      return;
+    }
     setBusyId(checklistItemId);
     setError(null);
     try {
@@ -90,6 +108,9 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
         const form = new FormData();
         form.append("file", file);
         form.append("checklistItemId", checklistItemId);
+        if (documentDates[checklistItemId]) {
+          form.append("documentDate", documentDates[checklistItemId]);
+        }
         const response = await fetch(`/api/v1/processes/${processId}/documents`, {
           method: "POST",
           body: form,
@@ -198,11 +219,16 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
         <ul className="mt-5 space-y-3">
           {items.map((item) => {
             const files = item.files ?? [];
+            const hasExpired = files.some(
+              (file) => file.expired || file.status === "EXPIRADO",
+            );
             const canAdd =
               item.status !== "NAO_APLICAVEL" &&
               (item.allowsMultiple
                 ? true
-                : item.status === "PENDENTE" || item.status === "REJEITADO");
+                : item.status === "PENDENTE" ||
+                  item.status === "REJEITADO" ||
+                  hasExpired);
             const uploadLabel =
               busyId === item.id
                 ? "Enviando..."
@@ -250,6 +276,22 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 md:shrink-0">
+                {item.validityDays && canAdd ? (
+                  <label className="text-xs text-slate-600">
+                    Data do comprovante
+                    <input
+                      type="date"
+                      className="ml-2 rounded border border-slate-300 px-2 py-1 text-xs"
+                      value={documentDates[item.id] ?? ""}
+                      onChange={(e) =>
+                        setDocumentDates((current) => ({
+                          ...current,
+                          [item.id]: e.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                ) : null}
                 {canAdd ? (
                   <label className="cursor-pointer rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
                     {uploadLabel}
@@ -308,6 +350,19 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
                       <p className="min-w-0 truncate text-slate-700">
                         {file.originalFilename}
                         <span className="ml-2 text-slate-400">{file.status}</span>
+                        {file.validUntil ? (
+                          <span
+                            className={
+                              file.expired || file.status === "EXPIRADO"
+                                ? "ml-2 font-medium text-rose-700"
+                                : "ml-2 text-slate-500"
+                            }
+                          >
+                            {file.expired || file.status === "EXPIRADO"
+                              ? `Vencido em ${formatBrDate(file.validUntil)}`
+                              : `Válido até ${formatBrDate(file.validUntil)}`}
+                          </span>
+                        ) : null}
                       </p>
                       <div className="flex gap-1">
                         <Link
@@ -323,7 +378,9 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
                         >
                           Ver
                         </button>
-                        {file.status !== "VALIDADO" ? (
+                        {file.status !== "VALIDADO" &&
+                        file.status !== "EXPIRADO" &&
+                        !file.expired ? (
                           <button
                             type="button"
                             className="rounded px-2 py-1 text-emerald-800 hover:bg-emerald-50"

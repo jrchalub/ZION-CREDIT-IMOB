@@ -7,6 +7,7 @@ describe("rbac", () => {
     expect(hasPermission("ADMIN", "audit:read")).toBe(true);
     expect(hasPermission("ADMIN", "financial:write")).toBe(true);
     expect(hasPermission("ADMIN", "decision:write")).toBe(true);
+    expect(hasPermission("ADMIN", "financing:write")).toBe(true);
   });
 
   it("restricts cliente role", () => {
@@ -27,7 +28,14 @@ describe("rbac", () => {
     expect(hasPermission("CORRESPONDENTE", "decision:write")).toBe(false);
     expect(hasPermission("CORRESPONDENTE", "operations:read")).toBe(false);
     expect(hasPermission("CORRESPONDENTE", "integrations:write")).toBe(false);
+    expect(hasPermission("CORRESPONDENTE", "financing:write")).toBe(false);
     expect(hasPermission("CORRESPONDENTE", "audit:read")).toBe(false);
+  });
+
+  it("grants financing to analista only for ops roles", () => {
+    expect(hasPermission("ANALISTA", "financing:read")).toBe(true);
+    expect(hasPermission("ANALISTA", "financing:write")).toBe(true);
+    expect(hasPermission("OPERADOR", "financing:write")).toBe(false);
   });
 
   it("hides auditoria from correspondent nav", () => {

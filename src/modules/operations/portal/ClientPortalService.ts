@@ -15,6 +15,11 @@ import {
   validateUploadBuffer,
 } from "@/domain/documents/upload-validation";
 import { assertCanAddDocumentToChecklistItem, syncChecklistItemFromDocuments } from "@/domain/documents/upload-policy";
+import { getAnnexByCode } from "@/domain/documents/caixa-annex-catalog";
+import {
+  persistDocumentValidity,
+  resolveUploadValidity,
+} from "@/domain/documents/document-validity-store";
 import { AppError } from "@/lib/api";
 import { enqueueDocumentProcessing } from "@/infra/queues";
 import { getStorageProvider } from "@/infra/storage";
@@ -106,6 +111,8 @@ async function buildClientPortalView(access: PortalTokenRecord) {
             checklistItemId: documents.checklistItemId,
             originalFilename: documents.originalFilename,
             status: documents.status,
+            documentDate: documents.documentDate,
+            validUntil: documents.validUntil,
           })
           .from(documents)
           .where(
@@ -176,16 +183,22 @@ async function buildClientPortalView(access: PortalTokenRecord) {
         typeName: c.typeName,
         status: c.item.status,
         allowsMultiple: c.allowsMultiple,
+        validityDays: getAnnexByCode(c.typeCode)?.validityDays ?? null,
         files: files.map((file) => ({
           id: file.id,
           originalFilename: file.originalFilename,
           status: file.status,
+          documentDate: file.documentDate,
+          validUntil: file.validUntil,
         })),
         needsUpload:
-          c.item.status === "PENDENTE" || c.item.status === "REJEITADO",
+          c.item.status === "PENDENTE" ||
+          c.item.status === "REJEITADO" ||
+          files.some((file) => file.status === "EXPIRADO"),
         canUpload:
           c.item.status === "PENDENTE" ||
           c.item.status === "REJEITADO" ||
+          files.some((file) => file.status === "EXPIRADO") ||
           (c.allowsMultiple && c.item.status === "ENVIADO"),
         canAddMore: c.allowsMultiple && c.item.status === "ENVIADO",
       };
@@ -214,6 +227,7 @@ export async function uploadViaPortal(
     filename: string;
     declaredMime: string;
     buffer: Buffer;
+    documentDate?: string | null;
   },
   meta?: { ip?: string | null; userAgent?: string | null; correlationId?: string },
 ) {
@@ -256,6 +270,11 @@ export async function uploadViaPortal(
     checklistItem,
     lockWhenValidated: true,
   });
+
+  const validity = await resolveUploadValidity(
+    checklistItem.documentTypeId,
+    input.documentDate,
+  );
 
   const validated = await validateUploadBuffer({
     filename: input.filename,
@@ -312,8 +331,13 @@ export async function uploadViaPortal(
       contentHash: validated.contentHash,
       storageProvider: storage.name,
       storageKey,
-      status: "RECEBIDO",
+      status: validity?.expired ? "EXPIRADO" : "RECEBIDO",
       competence: checklistItem.competence,
+      documentDate: validity?.documentDate ?? null,
+      validUntil: validity?.validUntil ?? null,
+      rejectionReason: validity?.expired
+        ? `Comprovante fora da validade de ${validity.validityDays} dias (válido até ${validity.validUntil}).`
+        : null,
       uploadedByUserId: null,
       duplicateOfDocumentId: duplicate?.id ?? null,
       metadata: {
@@ -325,6 +349,17 @@ export async function uploadViaPortal(
     .returning();
 
   await syncChecklistItemFromDocuments(access.tenantId, checklistItem.id);
+
+  if (validity?.expired) {
+    await persistDocumentValidity({
+      tenantId: access.tenantId,
+      processId: access.processId,
+      documentId: created.id,
+      checklistItemId: checklistItem.id,
+      window: validity,
+      currentStatus: "EXPIRADO",
+    });
+  }
 
   await markPendencySubmitted({
     tenantId: access.tenantId,

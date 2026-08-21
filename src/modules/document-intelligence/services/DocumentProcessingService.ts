@@ -13,6 +13,7 @@ import {
   pendencies,
 } from "@/db/schema";
 import { writeAuditLog } from "@/domain/audit/service";
+import { applyExtractedDocumentValidity } from "@/domain/documents/document-validity-store";
 import { sha256 } from "@/domain/documents/upload-validation";
 import { getStorageProvider } from "@/infra/storage";
 import { createLogger } from "@/lib/logger";
@@ -470,6 +471,15 @@ export async function processDocumentJob(input: ProcessInput) {
         updatedAt: new Date(),
       })
       .where(eq(documents.id, input.documentId));
+
+    await applyExtractedDocumentValidity({
+      tenantId: input.tenantId,
+      processId: input.processId,
+      documentId: input.documentId,
+      checklistItemId: doc.checklistItemId,
+      typeCode: matchedCode,
+      fields: extraction.fields,
+    });
 
     if (requiresReview) {
       await upsertAutomaticPendency({

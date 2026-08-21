@@ -79,9 +79,21 @@ Process Dossier + Analyst Review (human)
 
 Baseline: [`BASELINE_FASE_5.md`](./BASELINE_FASE_5.md)
 
-## Operations (FASE 6 — IN PROGRESS)
+## Operations (FASE 6 — PRODUCTION CLOSED)
 
 Workflow operacional, portais, notificações, SLA, adapters — ver [`OPERATIONS.md`](./OPERATIONS.md).
+
+## Institutional Financing (FASE 7 — BASELINE v1)
+
+```text
+FinancingSubmissionService
+        ↓
+FinancingProvider (mock-caixa | http)
+        ↓
+financing_submissions + status ENVIADO_AO_BANCO
+```
+
+Ver [`FINANCING_INTEGRATIONS.md`](./FINANCING_INTEGRATIONS.md).
 
 ## Estrutura
 
@@ -92,8 +104,11 @@ src/
   db/            # schema Drizzle + migrations + seed
   domain/        # regras de negócio
   modules/
-    document-intelligence/  # FASE 3 (frozen)
-    financial-analysis/     # FASE 4
+    document-intelligence/     # FASE 3 (frozen)
+    financial-analysis/        # FASE 4 (frozen)
+    credit-decision-support/   # FASE 5 (frozen)
+    operations/                # FASE 6 (frozen)
+    financing-integrations/    # FASE 7
   workers/       # BullMQ workers
   infra/         # redis, queues, storage providers
   lib/           # auth, api, logger, cpf

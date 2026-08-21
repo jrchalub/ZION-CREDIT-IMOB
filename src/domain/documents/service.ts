@@ -21,6 +21,11 @@ import {
   assertCanAddDocumentToChecklistItem,
   syncChecklistItemFromDocuments,
 } from "@/domain/documents/upload-policy";
+import { isExpiredOn } from "@/domain/documents/document-validity";
+import {
+  persistDocumentValidity,
+  resolveUploadValidity,
+} from "@/domain/documents/document-validity-store";
 import { randomUUID } from "node:crypto";
 
 export const reviewDocumentSchema = z.object({
@@ -71,6 +76,7 @@ export async function uploadDocument(
     filename: string;
     declaredMime: string;
     buffer: Buffer;
+    documentDate?: string | null;
   },
   meta?: { ip?: string | null; userAgent?: string | null; correlationId?: string },
 ) {
@@ -98,6 +104,11 @@ export async function uploadDocument(
     checklistItem,
     lockWhenValidated: false,
   });
+
+  const validity = await resolveUploadValidity(
+    checklistItem.documentTypeId,
+    input.documentDate,
+  );
 
   const validated = await validateUploadBuffer({
     filename: input.filename,
@@ -153,8 +164,13 @@ export async function uploadDocument(
       contentHash: validated.contentHash,
       storageProvider: storage.name,
       storageKey,
-      status: "RECEBIDO",
+      status: validity?.expired ? "EXPIRADO" : "RECEBIDO",
       competence: checklistItem.competence,
+      documentDate: validity?.documentDate ?? null,
+      validUntil: validity?.validUntil ?? null,
+      rejectionReason: validity?.expired
+        ? `Comprovante fora da validade de ${validity.validityDays} dias (válido até ${validity.validUntil}).`
+        : null,
       uploadedByUserId: session.sub,
       duplicateOfDocumentId: duplicate?.id ?? null,
       metadata: duplicate ? { detect_duplicate: true } : {},
@@ -178,6 +194,17 @@ export async function uploadDocument(
   }
 
   await syncChecklistItemFromDocuments(session.tenantId, checklistItem.id);
+
+  if (validity?.expired) {
+    await persistDocumentValidity({
+      tenantId: session.tenantId,
+      processId: input.processId,
+      documentId: created.id,
+      checklistItemId: checklistItem.id,
+      window: validity,
+      currentStatus: "EXPIRADO",
+    });
+  }
 
   // Close open pendency for this checklist item if any (staff upload → resolve)
   await db
@@ -291,6 +318,19 @@ export async function reviewDocument(
 
   if (input.action === "REJEITAR" && !input.reason?.trim()) {
     throw new AppError(400, "Informe o motivo da rejeição", "REJECTION_REASON_REQUIRED");
+  }
+
+  if (input.action === "VALIDAR") {
+    const expired =
+      document.status === "EXPIRADO" ||
+      (document.validUntil ? isExpiredOn(document.validUntil) : false);
+    if (expired) {
+      throw new AppError(
+        400,
+        "Não é possível validar um comprovante fora da validade de 60 dias. Solicite um documento atualizado.",
+        "DOCUMENT_EXPIRED",
+      );
+    }
   }
 
   const nextStatus = input.action === "VALIDAR" ? "VALIDADO" : "REJEITADO";

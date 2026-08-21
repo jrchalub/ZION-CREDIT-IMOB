@@ -11,6 +11,11 @@ export async function POST(request: Request, { params }: Params) {
     const form = await request.formData();
     const file = form.get("file");
     const checklistItemId = form.get("checklistItemId");
+    const documentDateRaw = form.get("documentDate");
+    const documentDate =
+      typeof documentDateRaw === "string" && documentDateRaw.trim()
+        ? documentDateRaw.trim()
+        : null;
 
     if (!(file instanceof File)) {
       throw new AppError(400, "Arquivo obrigatório", "FILE_REQUIRED");
@@ -28,6 +33,7 @@ export async function POST(request: Request, { params }: Params) {
         filename: file.name,
         declaredMime: file.type || "application/octet-stream",
         buffer,
+        documentDate,
       },
       { ...meta, correlationId },
     );

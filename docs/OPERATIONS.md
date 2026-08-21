@@ -66,4 +66,4 @@ Núcleo de crédito (FASES 3–5) permanece congelado.
 
 ## Próxima fase
 
-**FASE 7 — Institutional Financing** via `FinancingProvider` multi-instituição.
+**FASE 7 — Institutional Financing** — baseline v1 em [`FINANCING_INTEGRATIONS.md`](./FINANCING_INTEGRATIONS.md) (`FinancingProvider` mock/HTTP, submit/track).

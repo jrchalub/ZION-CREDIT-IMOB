@@ -88,5 +88,5 @@ Acesse: [http://localhost:3000](http://localhost:3000)
 3. FASE 3 — Document Intelligence ✅ **PRODUCTION CLOSED**
 4. FASE 4 — Financeiro ✅ **PRODUCTION CLOSED**
 5. FASE 5 — Credit Decision Support ✅ **PRODUCTION CLOSED** (ver `docs/BASELINE_FASE_5.md`)
-6. FASE 6 — Operations & Integrations — **IN PROGRESS**
-7. FASE 7 — Institutional Financing Integrations
+6. FASE 6 — Operations & Integrations ✅ **PRODUCTION CLOSED**
+7. FASE 7 — Institutional Financing Integrations ✅ **BASELINE v1** (ver `docs/FINANCING_INTEGRATIONS.md`)

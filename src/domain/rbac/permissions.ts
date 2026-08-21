@@ -26,6 +26,8 @@ export type Permission =
   | "decision:write"
   | "integrations:read"
   | "integrations:write"
+  | "financing:read"
+  | "financing:write"
   | "audit:read"
   | "users:read"
   | "users:write"
@@ -52,6 +54,8 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "decision:write",
     "integrations:read",
     "integrations:write",
+    "financing:read",
+    "financing:write",
     "audit:read",
     "users:read",
     "users:write",
@@ -77,6 +81,8 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "decision:write",
     "integrations:read",
     "integrations:write",
+    "financing:read",
+    "financing:write",
     "audit:read",
     "users:read",
   ],
@@ -99,6 +105,8 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "decision:write",
     "integrations:read",
     "integrations:write",
+    "financing:read",
+    "financing:write",
     "audit:read",
   ],
   CORRESPONDENTE: [

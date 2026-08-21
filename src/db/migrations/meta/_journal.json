@@ -78,6 +78,13 @@
       "when": 1787266200000,
       "tag": "0010_integration_calls",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1787267000000,
+      "tag": "0011_financing_submissions",
+      "breakpoints": true
     }
   ]
 }

@@ -12,6 +12,7 @@ import { ProcessOperationalPanel } from "@/components/process-operational-panel"
 import { PortalAccessPanel } from "@/components/portal-access-panel";
 import { ProcessPendenciesPanel } from "@/components/process-pendencies-panel";
 import { ProcessIntegrationsPanel } from "@/components/process-integrations-panel";
+import { ProcessFinancingPanel } from "@/components/process-financing-panel";
 import {
   PROCESS_STATUS_LABELS,
   type ProcessStatus,
@@ -45,6 +46,7 @@ export default async function ProcessDetailPage({
   const canRespond = hasPermission(session.role, "pendencies:respond");
   const canWritePendencies = hasPermission(session.role, "pendencies:write");
   const canIntegrations = hasPermission(session.role, "integrations:read");
+  const canFinancing = hasPermission(session.role, "financing:read");
   const canIssuePortal = hasPermission(session.role, "processes:write");
   const isCorrespondent = session.role === "CORRESPONDENTE";
 
@@ -163,6 +165,13 @@ export default async function ProcessDetailPage({
 
       {canIntegrations ? (
         <ProcessIntegrationsPanel processId={process.id} />
+      ) : null}
+
+      {canFinancing ? (
+        <ProcessFinancingPanel
+          processId={process.id}
+          processStatus={process.status}
+        />
       ) : null}
 
       {canDecision ? <ProcessDossierPanel processId={process.id} /> : null}

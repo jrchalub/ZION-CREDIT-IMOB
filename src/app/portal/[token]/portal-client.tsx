@@ -16,10 +16,13 @@ type PortalView = {
     canUpload: boolean;
     canAddMore: boolean;
     allowsMultiple: boolean;
+    validityDays: number | null;
     files: Array<{
       id: string;
       originalFilename: string;
       status: string;
+      documentDate: string | null;
+      validUntil: string | null;
     }>;
   }>;
   pendencies: Array<{
@@ -38,12 +41,14 @@ const STATUS_ICON: Record<string, string> = {
   ENVIADO: "✓",
   PENDENTE: "○",
   REJEITADO: "⚠",
+  EXPIRADO: "⚠",
 };
 
 export function ClientPortalPage({ token }: { token: string }) {
   const [data, setData] = useState<PortalView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [documentDates, setDocumentDates] = useState<Record<string, string>>({});
 
   const reload = useCallback(async () => {
     const res = await fetch(`/api/v1/portal/${encodeURIComponent(token)}`);
@@ -64,6 +69,11 @@ export function ClientPortalPage({ token }: { token: string }) {
   async function onUpload(checklistItemId: string, fileList: FileList | File[]) {
     const files = Array.from(fileList);
     if (files.length === 0) return;
+    const item = data?.documents.find((row) => row.checklistItemId === checklistItemId);
+    if (item?.validityDays && !documentDates[checklistItemId]) {
+      setError(`Informe a data do comprovante (validade de ${item.validityDays} dias).`);
+      return;
+    }
     setBusyId(checklistItemId);
     setError(null);
     try {
@@ -71,6 +81,9 @@ export function ClientPortalPage({ token }: { token: string }) {
         const form = new FormData();
         form.append("file", file);
         form.append("checklistItemId", checklistItemId);
+        if (documentDates[checklistItemId]) {
+          form.append("documentDate", documentDates[checklistItemId]);
+        }
         const res = await fetch(
           `/api/v1/portal/${encodeURIComponent(token)}/documents`,
           { method: "POST", body: form },
@@ -199,12 +212,34 @@ export function ClientPortalPage({ token }: { token: string }) {
             {needed.map((doc) => (
               <li key={doc.checklistItemId} className="text-sm">
                 <p className="font-medium">📄 {doc.label}</p>
+                {doc.validityDays ? (
+                  <p className="mt-1 text-xs text-slate-600">
+                    O comprovante precisa ter no máximo {doc.validityDays} dias.
+                    Informe a data impressa no documento.
+                  </p>
+                ) : null}
                 {doc.canAddMore ? (
                   <p className="mt-1 text-xs text-slate-600">
                     Você já enviou {doc.files.length} arquivo
                     {doc.files.length === 1 ? "" : "s"}. Pode adicionar outro neste
                     mesmo item.
                   </p>
+                ) : null}
+                {doc.validityDays ? (
+                  <label className="mt-2 block text-xs text-slate-600">
+                    Data do comprovante
+                    <input
+                      type="date"
+                      className="ml-2 rounded border border-slate-300 px-2 py-1 text-xs"
+                      value={documentDates[doc.checklistItemId] ?? ""}
+                      onChange={(e) =>
+                        setDocumentDates((current) => ({
+                          ...current,
+                          [doc.checklistItemId]: e.target.value,
+                        }))
+                      }
+                    />
+                  </label>
                 ) : null}
                 <label className="mt-2 inline-flex cursor-pointer items-center rounded-md bg-slate-900 px-4 py-2 text-xs font-medium text-white hover:bg-slate-800">
                   {busyId === doc.checklistItemId

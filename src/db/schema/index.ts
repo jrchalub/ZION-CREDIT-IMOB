@@ -1505,3 +1505,54 @@ export const integrationCalls = pgTable(
     index("integration_calls_created_idx").on(table.createdAt),
   ],
 );
+
+/** FASE 7 — institutional financing submit/track (FinancingProvider). */
+export const financingInstitutionEnum = pgEnum("financing_institution", [
+  "CAIXA",
+]);
+
+export const financingSubmissionStatusEnum = pgEnum(
+  "financing_submission_status",
+  ["QUEUED", "SUBMITTED", "TRACKING", "SUCCEEDED", "FAILED", "CANCELLED"],
+);
+
+export const financingSubmissions = pgTable(
+  "financing_submissions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    processId: uuid("process_id")
+      .notNull()
+      .references(() => financingProcesses.id, { onDelete: "cascade" }),
+    institution: financingInstitutionEnum("institution").notNull().default("CAIXA"),
+    provider: text("provider").notNull(),
+    status: financingSubmissionStatusEnum("status")
+      .notNull()
+      .default("QUEUED"),
+    providerRef: text("provider_ref"),
+    externalStatus: text("external_status"),
+    /** Redacted request — never full CPF / document binaries */
+    requestSummary: jsonb("request_summary")
+      .$type<Record<string, unknown>>()
+      .default({}),
+    responseSummary: jsonb("response_summary")
+      .$type<Record<string, unknown>>()
+      .default({}),
+    errorMessage: text("error_message"),
+    submittedByUserId: uuid("submitted_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    lastTrackedAt: timestamp("last_tracked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("financing_submissions_tenant_idx").on(table.tenantId),
+    index("financing_submissions_process_idx").on(table.processId),
+    index("financing_submissions_institution_idx").on(table.institution),
+    index("financing_submissions_created_idx").on(table.createdAt),
+  ],
+);
