@@ -59,6 +59,7 @@ export function jsonError(error: unknown, correlationId?: string) {
       message: "Unhandled error",
       correlationId,
       name: error instanceof Error ? error.name : "Unknown",
+      detail: error instanceof Error ? error.message : String(error),
     }),
   );
 

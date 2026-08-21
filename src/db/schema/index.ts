@@ -191,6 +191,64 @@ export const correspondents = pgTable(
   (table) => [index("correspondents_tenant_idx").on(table.tenantId)],
 );
 
+/**
+ * FASE 7 — banking channel partners (CredOnline, FinanCasa…).
+ * Distinct from commercial `correspondents` (FASE 6.2 org portal).
+ */
+export const bankingCorrespondentStatusEnum = pgEnum(
+  "banking_correspondent_status",
+  ["ATIVO", "INATIVO"],
+);
+
+export const bankingCorrespondents = pgTable(
+  "banking_correspondents",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    document: text("document"),
+    status: bankingCorrespondentStatusEnum("status").notNull().default("ATIVO"),
+    phone: text("phone"),
+    email: text("email"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("banking_correspondents_tenant_idx").on(table.tenantId),
+    index("banking_correspondents_status_idx").on(table.status),
+  ],
+);
+
+/** Which banking correspondents a commercial org may use. */
+export const commercialBankingAccess = pgTable(
+  "commercial_banking_access",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    correspondentId: uuid("correspondent_id")
+      .notNull()
+      .references(() => correspondents.id, { onDelete: "cascade" }),
+    bankingCorrespondentId: uuid("banking_correspondent_id")
+      .notNull()
+      .references(() => bankingCorrespondents.id, { onDelete: "cascade" }),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("commercial_banking_access_tenant_idx").on(table.tenantId),
+    index("commercial_banking_access_org_idx").on(table.correspondentId),
+    uniqueIndex("commercial_banking_access_uidx").on(
+      table.tenantId,
+      table.correspondentId,
+      table.bankingCorrespondentId,
+    ),
+  ],
+);
+
 export const developments = pgTable(
   "developments",
   {
@@ -1526,6 +1584,11 @@ export const financingSubmissions = pgTable(
     processId: uuid("process_id")
       .notNull()
       .references(() => financingProcesses.id, { onDelete: "cascade" }),
+    /** Banking channel partner chosen for this submission (not commercial org). */
+    bankingCorrespondentId: uuid("banking_correspondent_id").references(
+      () => bankingCorrespondents.id,
+      { onDelete: "restrict" },
+    ),
     institution: financingInstitutionEnum("institution").notNull().default("CAIXA"),
     provider: text("provider").notNull(),
     status: financingSubmissionStatusEnum("status")
@@ -1553,6 +1616,32 @@ export const financingSubmissions = pgTable(
     index("financing_submissions_tenant_idx").on(table.tenantId),
     index("financing_submissions_process_idx").on(table.processId),
     index("financing_submissions_institution_idx").on(table.institution),
+    index("financing_submissions_banking_corr_idx").on(table.bankingCorrespondentId),
     index("financing_submissions_created_idx").on(table.createdAt),
+  ],
+);
+
+export const financingSubmissionEvents = pgTable(
+  "financing_submission_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    submissionId: uuid("submission_id")
+      .notNull()
+      .references(() => financingSubmissions.id, { onDelete: "cascade" }),
+    fromStatus: text("from_status"),
+    toStatus: text("to_status").notNull(),
+    externalStatus: text("external_status"),
+    note: text("note"),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("financing_submission_events_tenant_idx").on(table.tenantId),
+    index("financing_submission_events_submission_idx").on(table.submissionId),
   ],
 );

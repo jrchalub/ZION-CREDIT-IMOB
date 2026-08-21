@@ -65,7 +65,17 @@ export default async function ProcessDetailPage({
             CPF {formatCpfDisplay(process.clientCpf)} · Perfil {process.incomeProfile}
           </p>
         </div>
-        <StatusBadge status={process.status as ProcessStatus} />
+        <div className="flex flex-col items-end gap-2">
+          <StatusBadge status={process.status as ProcessStatus} />
+          {canIssuePortal ? (
+            <Link
+              href={`/processes/${process.id}/edit`}
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50"
+            >
+              Editar dados
+            </Link>
+          ) : null}
+        </div>
       </div>
       <p className="text-sm text-slate-600">
         Etapa operacional:{" "}
@@ -171,6 +181,7 @@ export default async function ProcessDetailPage({
         <ProcessFinancingPanel
           processId={process.id}
           processStatus={process.status}
+          processNumber={process.processNumber}
         />
       ) : null}
 

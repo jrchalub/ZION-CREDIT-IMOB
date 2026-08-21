@@ -3,8 +3,10 @@ import bcrypt from "bcryptjs";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  bankingCorrespondents,
   clientAddresses,
   clients,
+  commercialBankingAccess,
   correspondents,
   developments,
   financingProcesses,
@@ -24,11 +26,72 @@ async function hashPassword(password: string) {
   return bcrypt.hash(password, 12);
 }
 
-async function seedDocumentCatalog() {
-  await upsertDocumentCatalog();
-  const synced = await syncAllProcessChecklists();
+async function seedBankingCorrespondents() {
+  const [tenant] = await db.select().from(tenants).limit(1);
+  if (!tenant) {
+    console.log("No tenant yet — banking correspondents will seed with demo data.");
+    return;
+  }
+
+  const existing = await db
+    .select()
+    .from(bankingCorrespondents)
+    .where(eq(bankingCorrespondents.tenantId, tenant.id))
+    .limit(1);
+  if (existing.length > 0) {
+    console.log("Banking correspondents already seeded.");
+    return;
+  }
+
+  const inserted = await db
+    .insert(bankingCorrespondents)
+    .values([
+      {
+        tenantId: tenant.id,
+        name: "CredOnline",
+        document: "11.111.111/0001-11",
+        status: "ATIVO",
+        phone: "1130001001",
+        email: "ops@credonline.demo",
+      },
+      {
+        tenantId: tenant.id,
+        name: "FinanCasa",
+        document: "22.222.222/0001-22",
+        status: "ATIVO",
+        phone: "1130002002",
+        email: "ops@financasa.demo",
+      },
+      {
+        tenantId: tenant.id,
+        name: "HabitaMais",
+        document: "33.333.333/0001-33",
+        status: "ATIVO",
+        phone: "1130003003",
+        email: "ops@habitamais.demo",
+      },
+    ])
+    .returning();
+
+  const [org] = await db
+    .select()
+    .from(correspondents)
+    .where(eq(correspondents.tenantId, tenant.id))
+    .limit(1);
+
+  if (org) {
+    await db.insert(commercialBankingAccess).values(
+      inserted.map((partner) => ({
+        tenantId: tenant.id,
+        correspondentId: org.id,
+        bankingCorrespondentId: partner.id,
+        active: true,
+      })),
+    );
+  }
+
   console.log(
-    `Document catalog upserted (anexos Caixa 1–12). Checklists sincronizados: ${synced}.`,
+    `Banking correspondents seeded: ${inserted.map((p) => p.name).join(", ")}.`,
   );
 }
 
@@ -61,11 +124,20 @@ async function ensureCorrespondentUserLinks() {
   console.log("Linked corresp@zioncredit.demo → correspondent org.");
 }
 
+async function seedDocumentCatalog() {
+  await upsertDocumentCatalog();
+  const synced = await syncAllProcessChecklists();
+  console.log(
+    `Document catalog upserted (anexos Caixa 1–12). Checklists sincronizados: ${synced}.`,
+  );
+}
+
 async function seed() {
   console.log("Seeding ZION CREDIT demo data...");
 
   await seedDocumentCatalog();
   await ensureCorrespondentUserLinks();
+  await seedBankingCorrespondents();
 
   const existing = await db.select().from(tenants).limit(1);
   if (existing.length > 0) {
@@ -131,6 +203,45 @@ async function seed() {
     .update(users)
     .set({ correspondentId: correspondent.id, updatedAt: new Date() })
     .where(eq(users.id, correspondente.id));
+
+  const bankingPartners = await db
+    .insert(bankingCorrespondents)
+    .values([
+      {
+        tenantId: tenant.id,
+        name: "CredOnline",
+        document: "11.111.111/0001-11",
+        status: "ATIVO",
+        phone: "1130001001",
+        email: "ops@credonline.demo",
+      },
+      {
+        tenantId: tenant.id,
+        name: "FinanCasa",
+        document: "22.222.222/0001-22",
+        status: "ATIVO",
+        phone: "1130002002",
+        email: "ops@financasa.demo",
+      },
+      {
+        tenantId: tenant.id,
+        name: "HabitaMais",
+        document: "33.333.333/0001-33",
+        status: "ATIVO",
+        phone: "1130003003",
+        email: "ops@habitamais.demo",
+      },
+    ])
+    .returning();
+
+  await db.insert(commercialBankingAccess).values(
+    bankingPartners.map((partner) => ({
+      tenantId: tenant.id,
+      correspondentId: correspondent.id,
+      bankingCorrespondentId: partner.id,
+      active: true,
+    })),
+  );
 
   const [development] = await db
     .insert(developments)

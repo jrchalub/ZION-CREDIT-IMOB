@@ -24,7 +24,7 @@ Erros:
 | GET/POST | `/clients` | `clients:read/write` |
 | GET/PATCH | `/clients/:id` | `clients:read/write` |
 | GET/POST | `/processes` | `processes:read/write` |
-| GET | `/processes/:id` | `processes:read` |
+| GET/PATCH/DELETE | `/processes/:id` | `processes:read` / `processes:write` | Detalhe; editar dados; excluir (NOVO/CANCELADO ou ADMIN/GESTOR) |
 | POST | `/processes/:id/transition` | `processes:transition` |
 | GET/POST | `/processes/:id/documents` | `documents:read/write` |
 | GET/PATCH | `/processes/:id/checklist` | `documents:read/write` |
@@ -66,12 +66,12 @@ UI: `/documents/:id/review`
 | GET/POST | `/pendencies` | `pendencies:read/write` | FASE 6.4 — create OPEN; notify emite deep link (6.5) |
 | PATCH | `/pendencies/:id` | `pendencies:write` ou `pendencies:respond` | Máquina OPEN→SUBMITTED→… |
 | GET/POST | `/processes/:id/integrations` | `integrations:read/write` | FASE 6.6 — Bureau / Bank read |
-| GET/POST | `/processes/:id/financing` | `financing:read/write` | FASE 7 — submit institucional |
-| POST | `/processes/:id/financing/:submissionId/track` | `financing:write` | FASE 7 — acompanhar status |
+| GET/POST | `/processes/:id/financing` | `financing:read/write` | FASE 7 — list/submit (`bankingCorrespondentId` obrigatório no POST) |
+| POST | `/processes/:id/financing/:submissionId/track` | `financing:write` | FASE 7 — track da submissão específica |
 
 FASE 6.5: criar pendência com `notifyClient` gera token de portal + mensagem WhatsApp/email (link apenas; sem documento no canal).  
 FASE 6.6: integrações de **leitura** apenas.  
-FASE 7: envio institucional via `FinancingProvider` (metadados; sem binários na v1). APROVADO/REPROVADO só com transição humana.
+FASE 7: envio institucional via `FinancingProvider` (metadados; sem binários na v1). Cada submissão registra correspondente bancário. APROVADO/REPROVADO só com transição humana.
 
 Disclaimer obrigatório: suporte à decisão — não é aprovação bancária. Sem score mágico.
 

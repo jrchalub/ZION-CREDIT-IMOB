@@ -83,16 +83,19 @@ Baseline: [`BASELINE_FASE_5.md`](./BASELINE_FASE_5.md)
 
 Workflow operacional, portais, notificações, SLA, adapters — ver [`OPERATIONS.md`](./OPERATIONS.md).
 
-## Institutional Financing (FASE 7 — BASELINE v1)
+## Institutional Financing (FASE 7 — multi banking correspondents)
 
 ```text
+banking_correspondent (obrigatório)
+        ↓
 FinancingSubmissionService
         ↓
 FinancingProvider (mock-caixa | http)
         ↓
-financing_submissions + status ENVIADO_AO_BANCO
+financing_submissions + events → status ENVIADO_AO_BANCO
 ```
 
+`banking_correspondents` ≠ `correspondents` (comercial FASE 6.2).  
 Ver [`FINANCING_INTEGRATIONS.md`](./FINANCING_INTEGRATIONS.md).
 
 ## Estrutura

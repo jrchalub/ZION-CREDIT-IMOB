@@ -3,9 +3,10 @@ import { canSubmitFinancing } from "./status-gate";
 import type { ProcessStatus } from "@/domain/process/status-machine";
 
 describe("financing status gate", () => {
-  it("allows APTO and AGUARDANDO_BANCO", () => {
+  it("allows APTO, AGUARDANDO_BANCO and ENVIADO_AO_BANCO (re-submit)", () => {
     expect(canSubmitFinancing("APTO")).toBe(true);
     expect(canSubmitFinancing("AGUARDANDO_BANCO")).toBe(true);
+    expect(canSubmitFinancing("ENVIADO_AO_BANCO")).toBe(true);
   });
 
   it("blocks earlier and terminal statuses", () => {
@@ -13,7 +14,6 @@ describe("financing status gate", () => {
       "NOVO",
       "EM_ANALISE",
       "PRE_ANALISADO",
-      "ENVIADO_AO_BANCO",
       "APROVADO",
       "CANCELADO",
     ];

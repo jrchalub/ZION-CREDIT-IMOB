@@ -23,6 +23,22 @@ import {
 } from "@/domain/process/status-machine";
 import { AppError } from "@/lib/api";
 import type { SessionPayload } from "@/lib/auth/session";
+import { toNumericMoneyString } from "@/lib/utils";
+
+const optionalMoney = z
+  .union([z.string(), z.number(), z.null()])
+  .optional()
+  .transform((value, ctx) => {
+    try {
+      return toNumericMoneyString(value ?? null);
+    } catch {
+      ctx.addIssue({
+        code: "custom",
+        message: "Informe um valor numérico válido (ex.: 320000 ou 320.000,00)",
+      });
+      return z.NEVER;
+    }
+  });
 
 export const createProcessSchema = z.object({
   clientId: z.uuid(),
@@ -43,10 +59,10 @@ export const createProcessSchema = z.object({
   developmentId: z.uuid().optional().nullable(),
   unitId: z.uuid().optional().nullable(),
   intendedBank: z.string().max(80).optional().nullable(),
-  propertyValue: z.string().optional().nullable(),
-  downPayment: z.string().optional().nullable(),
-  financedAmount: z.string().optional().nullable(),
-  fgtsAmount: z.string().optional().nullable(),
+  propertyValue: optionalMoney,
+  downPayment: optionalMoney,
+  financedAmount: optionalMoney,
+  fgtsAmount: optionalMoney,
   amortizationSystem: z.enum(["SAC", "PRICE"]).optional().nullable(),
   financingType: z.string().max(80).optional().nullable(),
   hasCreditCard: z.boolean().optional().default(true),
@@ -56,6 +72,41 @@ export const transitionProcessSchema = z.object({
   toStatus: z.enum(PROCESS_STATUSES),
   reason: z.string().max(500).optional().nullable(),
 });
+
+export const updateProcessSchema = z.object({
+  incomeProfile: z
+    .enum([
+      "AUTONOMO",
+      "CLT",
+      "MEI",
+      "EMPRESARIO",
+      "SERVIDOR_PUBLICO",
+      "APOSENTADO",
+      "PENSIONISTA",
+      "COMPOSICAO_RENDA",
+      "SOCIO_EMPRESA",
+      "PRODUTOR_RURAL",
+    ])
+    .optional(),
+  intendedBank: z.string().max(80).optional().nullable(),
+  propertyValue: optionalMoney,
+  downPayment: optionalMoney,
+  financedAmount: optionalMoney,
+  fgtsAmount: optionalMoney,
+  amortizationSystem: z.enum(["SAC", "PRICE"]).optional().nullable(),
+  financingType: z.string().max(80).optional().nullable(),
+  hasCreditCard: z.boolean().optional(),
+});
+
+const HARD_DELETE_SAFE_STATUSES: ProcessStatus[] = ["NOVO", "CANCELADO"];
+
+function canHardDeleteProcess(
+  session: SessionPayload,
+  status: ProcessStatus,
+): boolean {
+  if (session.role === "ADMIN" || session.role === "GESTOR") return true;
+  return HARD_DELETE_SAFE_STATUSES.includes(status);
+}
 
 async function nextProcessNumber(tenantId: string, year: number): Promise<string> {
   return db.transaction(async (tx) => {
@@ -265,6 +316,143 @@ export async function createProcess(
   });
 
   return getProcess(session, created.id);
+}
+
+export async function updateProcess(
+  session: SessionPayload,
+  id: string,
+  input: z.infer<typeof updateProcessSchema>,
+  meta?: { ip?: string | null; userAgent?: string | null; correlationId?: string },
+) {
+  const current = await getProcess(session, id);
+  const profileChanged =
+    input.incomeProfile !== undefined &&
+    input.incomeProfile !== current.incomeProfile;
+
+  const [updated] = await db
+    .update(financingProcesses)
+    .set({
+      ...(input.incomeProfile !== undefined
+        ? { incomeProfile: input.incomeProfile }
+        : {}),
+      ...(input.intendedBank !== undefined
+        ? { intendedBank: input.intendedBank }
+        : {}),
+      ...(input.propertyValue !== undefined
+        ? { propertyValue: input.propertyValue }
+        : {}),
+      ...(input.downPayment !== undefined
+        ? { downPayment: input.downPayment }
+        : {}),
+      ...(input.financedAmount !== undefined
+        ? { financedAmount: input.financedAmount }
+        : {}),
+      ...(input.fgtsAmount !== undefined ? { fgtsAmount: input.fgtsAmount } : {}),
+      ...(input.amortizationSystem !== undefined
+        ? { amortizationSystem: input.amortizationSystem }
+        : {}),
+      ...(input.financingType !== undefined
+        ? { financingType: input.financingType }
+        : {}),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(financingProcesses.id, id),
+        eq(financingProcesses.tenantId, session.tenantId),
+      ),
+    )
+    .returning();
+
+  if (!updated) {
+    throw new AppError(404, "Processo não encontrado", "PROCESS_NOT_FOUND");
+  }
+
+  if (profileChanged || input.hasCreditCard !== undefined) {
+    await generateChecklistForProcess(
+      session.tenantId,
+      id,
+      updated.incomeProfile,
+      { hasCreditCard: input.hasCreditCard ?? true },
+    );
+  }
+
+  await writeAuditLog({
+    tenantId: session.tenantId,
+    userId: session.sub,
+    action: "UPDATE",
+    entity: "financing_process",
+    entityId: id,
+    oldValue: {
+      incomeProfile: current.incomeProfile,
+      intendedBank: current.intendedBank,
+      propertyValue: current.propertyValue,
+      downPayment: current.downPayment,
+      financedAmount: current.financedAmount,
+      fgtsAmount: current.fgtsAmount,
+      amortizationSystem: current.amortizationSystem,
+      financingType: current.financingType,
+    },
+    newValue: {
+      incomeProfile: updated.incomeProfile,
+      intendedBank: updated.intendedBank,
+      propertyValue: updated.propertyValue,
+      downPayment: updated.downPayment,
+      financedAmount: updated.financedAmount,
+      fgtsAmount: updated.fgtsAmount,
+      amortizationSystem: updated.amortizationSystem,
+      financingType: updated.financingType,
+    },
+    ip: meta?.ip,
+    userAgent: meta?.userAgent,
+    correlationId: meta?.correlationId,
+  });
+
+  return getProcess(session, id);
+}
+
+export async function deleteProcess(
+  session: SessionPayload,
+  id: string,
+  meta?: { ip?: string | null; userAgent?: string | null; correlationId?: string },
+) {
+  const current = await getProcess(session, id);
+  const status = current.status as ProcessStatus;
+
+  if (!canHardDeleteProcess(session, status)) {
+    throw new AppError(
+      400,
+      "Exclusão permanente só é permitida em NOVO ou CANCELADO. Cancele o processo antes ou peça a um gestor.",
+      "PROCESS_DELETE_BLOCKED",
+    );
+  }
+
+  await db
+    .delete(financingProcesses)
+    .where(
+      and(
+        eq(financingProcesses.id, id),
+        eq(financingProcesses.tenantId, session.tenantId),
+      ),
+    );
+
+  await writeAuditLog({
+    tenantId: session.tenantId,
+    userId: session.sub,
+    action: "DELETE",
+    entity: "financing_process",
+    entityId: id,
+    oldValue: {
+      processNumber: current.processNumber,
+      status: current.status,
+      clientId: current.clientId,
+    },
+    ip: meta?.ip,
+    userAgent: meta?.userAgent,
+    correlationId: meta?.correlationId,
+  });
+
+  return { id, deleted: true as const };
 }
 
 export async function transitionProcess(

@@ -1,6 +1,7 @@
 import { requirePermission } from "@/domain/auth/service";
 import {
   listProcessFinancing,
+  listSelectableBankingCorrespondents,
   submitFinancingSchema,
   submitProcessFinancing,
 } from "@/modules/financing-integrations/FinancingSubmissionService";
@@ -14,8 +15,11 @@ export async function GET(request: Request, { params }: Params) {
   try {
     const session = await requirePermission("financing:read");
     const { id } = await params;
-    const items = await listProcessFinancing(session, id);
-    return jsonOk({ items });
+    const [items, bankingCorrespondents] = await Promise.all([
+      listProcessFinancing(session, id),
+      listSelectableBankingCorrespondents(session),
+    ]);
+    return jsonOk({ items, bankingCorrespondents });
   } catch (error) {
     return jsonError(error, correlationId);
   }
@@ -26,7 +30,7 @@ export async function POST(request: Request, { params }: Params) {
   try {
     const session = await requirePermission("financing:write");
     const { id } = await params;
-    const body = submitFinancingSchema.parse(await request.json().catch(() => ({})));
+    const body = submitFinancingSchema.parse(await request.json());
     const meta = getRequestMeta(request);
     const submission = await submitProcessFinancing(session, id, body, {
       ...meta,

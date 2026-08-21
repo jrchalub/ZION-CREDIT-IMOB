@@ -52,7 +52,17 @@ export default function NewProcessPage() {
       });
       const json = await response.json();
       if (!response.ok) {
-        setError(json?.error?.message ?? "Erro ao criar processo");
+        const details = Array.isArray(json?.error?.details)
+          ? json.error.details
+              .map((d: { message?: string }) => d.message)
+              .filter(Boolean)
+              .join(" · ")
+          : null;
+        setError(
+          details ||
+            json?.error?.message ||
+            "Erro ao criar processo",
+        );
         return;
       }
       router.push(`/processes/${json.data.id}`);

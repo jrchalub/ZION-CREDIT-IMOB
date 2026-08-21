@@ -47,9 +47,11 @@ Não reescrever crédito/IA nesta fase.
 
 ## FASE 7 — Institutional Financing Integrations
 
-**STATUS: BASELINE v1**
+**STATUS: BASELINE v1 + multi banking correspondents**
 
-`FinancingProvider` multi-instituição (Caixa mock/HTTP) — ver [`FINANCING_INTEGRATIONS.md`](./FINANCING_INTEGRATIONS.md).
+`FinancingProvider` multi-instituição (Caixa mock/HTTP) com **correspondente bancário obrigatório por submissão** — ver [`FINANCING_INTEGRATIONS.md`](./FINANCING_INTEGRATIONS.md).
+
+Não avançar 7.1 até o modelo multi-correspondente estar estável.
 
 ## Roadmap
 
