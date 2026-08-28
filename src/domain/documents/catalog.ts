@@ -85,7 +85,51 @@ export async function upsertDocumentCatalog() {
     })),
   );
 
-  await db.insert(incomeProfileDocumentRequirements).values(requirementRows);
+  const extras: typeof requirementRows = [];
+  const extrato = typesByCode.EXTRATO_BANCARIO;
+  const fatura = typesByCode.FATURA_CARTAO;
+  const contracheque = typesByCode.CONTRACHEQUE;
+
+  if (extrato) {
+    extras.push({
+      incomeProfile: "AUTONOMO",
+      documentTypeId: extrato.id,
+      requirement: "OBRIGATORIO",
+      quantity: 3,
+      sortOrder: 200,
+      labelTemplate: "Extrato bancário — {competence}",
+      conditionKey: null,
+      active: true,
+    });
+  }
+  if (fatura) {
+    extras.push({
+      incomeProfile: "AUTONOMO",
+      documentTypeId: fatura.id,
+      requirement: "CONDICIONAL",
+      quantity: 3,
+      sortOrder: 210,
+      labelTemplate: "Fatura de cartão — {competence}",
+      conditionKey: "HAS_CREDIT_CARD",
+      active: true,
+    });
+  }
+  if (contracheque) {
+    extras.push({
+      incomeProfile: "CLT",
+      documentTypeId: contracheque.id,
+      requirement: "OBRIGATORIO",
+      quantity: 2,
+      sortOrder: 200,
+      labelTemplate: "Contracheque — {competence}",
+      conditionKey: null,
+      active: true,
+    });
+  }
+
+  await db
+    .insert(incomeProfileDocumentRequirements)
+    .values([...requirementRows, ...extras]);
 
   return typesByCode;
 }

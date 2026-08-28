@@ -92,6 +92,13 @@
       "when": 1787267800000,
       "tag": "0012_banking_correspondents",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1787870000000,
+      "tag": "0013_document_intake_attendance",
+      "breakpoints": true
     }
   ]
 }

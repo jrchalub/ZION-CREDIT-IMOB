@@ -28,6 +28,14 @@ export async function POST(request: Request, { params }: Params) {
         correlationId,
         jobId: `doc-${id}-sync-${Date.now()}`,
       });
+      const { organizeDocumentAfterProcessing } = await import(
+        "@/modules/document-intake/DocumentOrganizerService"
+      );
+      await organizeDocumentAfterProcessing({
+        documentId: id,
+        tenantId: session.tenantId,
+        processId: doc.document.processId,
+      });
       return jsonOk(result);
     }
 

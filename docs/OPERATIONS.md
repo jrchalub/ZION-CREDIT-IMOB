@@ -67,3 +67,9 @@ Núcleo de crédito (FASES 3–5) permanece congelado.
 ## Próxima fase
 
 **FASE 7 — Institutional Financing** — baseline v1 em [`FINANCING_INTEGRATIONS.md`](./FINANCING_INTEGRATIONS.md) (`FinancingProvider` mock/HTTP, submit/track).
+
+---
+
+## Incremento 6.7 — Caixa de documentos + CRM link
+
+Upload em lote (`/processes/:id/documents/inbox`) reutiliza o worker FASE 3. Organização automática só com `AUTO_SUGGESTED`. Completude AUTÔNOMO (3 extratos / faturas) e CLT (2 contracheques). Painel **Atendimento** (`process_attendance`) vincula conversa CRM — sem plataforma de WhatsApp nova. **Não envia ao banco.**

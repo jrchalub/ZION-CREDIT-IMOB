@@ -29,6 +29,8 @@ Upload → MinIO → enqueue document-processing
   → human review
 ```
 
+Caixa de documentos (`src/modules/document-intake`) consome este pipeline: upload em lote sem `checklistItemId`, depois organiza no checklist se a classificação for `AUTO_SUGGESTED`. Tipo desconhecido ou baixa confiança → revisão humana. **Não** substitui o motor OCR/IA.
+
 ## Providers
 
 - `AI_PROVIDER=mock` (default) — cenários: SUCCESS, LOW_CONFIDENCE, NAME_MISMATCH, CPF_MISMATCH, INVALID_JSON, PROVIDER_ERROR, OCR_ERROR

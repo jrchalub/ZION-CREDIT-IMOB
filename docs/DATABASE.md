@@ -61,7 +61,7 @@ Regra: **COMPLETED ≠ VALIDADO**.
 | `banking_correspondents` | Canais bancários (CredOnline…) — FASE 7 |
 | `commercial_banking_access` | Org comercial ↔ correspondente bancário |
 | `financing_submissions` | Envio/acompanhamento institucional (FASE 7) |
-| `financing_submission_events` | Histórico de status por submissão |
+| `process_attendance` | Vínculo CRM/WhatsApp + visita (6.7) |
 
 ## Convenções
 

@@ -251,17 +251,18 @@ export async function processDocumentJob(input: ProcessInput) {
     });
     const classification = classificationResultSchema.parse(classificationRaw);
     const matchedCode = mapToKnownTypeCode(classification.documentType, knownCodes);
-    if (!matchedCode) {
-      throw new Error("UNKNOWN_DOCUMENT_TYPE");
-    }
-    const decision = decideClassification(classification.confidence);
-    const matchedType = types.find((t) => t.code === matchedCode);
+    const decision = matchedCode
+      ? decideClassification(classification.confidence)
+      : ("REQUIRES_REVIEW" as const);
+    const matchedType = matchedCode
+      ? types.find((t) => t.code === matchedCode)
+      : undefined;
 
     await db.insert(documentClassifications).values({
       tenantId: input.tenantId,
       documentId: input.documentId,
       processingRunId: runId,
-      suggestedTypeCode: matchedCode,
+      suggestedTypeCode: matchedCode ?? classification.documentType.slice(0, 80),
       matchedDocumentTypeId: matchedType?.id ?? null,
       confidence: String(classification.confidence),
       decision,
@@ -282,7 +283,7 @@ export async function processDocumentJob(input: ProcessInput) {
       status: "ok",
       durationMs: Date.now() - classifyStarted,
       summary: {
-        documentType: matchedCode,
+        documentType: matchedCode ?? classification.documentType,
         confidence: classification.confidence,
         decision,
       },
@@ -293,17 +294,23 @@ export async function processDocumentJob(input: ProcessInput) {
       action: "DOCUMENT_CLASSIFIED",
       entity: "document",
       entityId: input.documentId,
-      newValue: { type: matchedCode, confidence: classification.confidence, decision },
+      newValue: {
+        type: matchedCode ?? classification.documentType,
+        confidence: classification.confidence,
+        decision,
+      },
       correlationId: input.correlationId,
     });
 
-    if (decision === "LOW_CONFIDENCE") {
+    if (decision === "LOW_CONFIDENCE" || !matchedCode) {
       await upsertAutomaticPendency({
         tenantId: input.tenantId,
         processId: input.processId,
         documentId: input.documentId,
-        type: "LOW_CONFIDENCE",
-        description: "Classificação com baixa confiança — revisão humana necessária",
+        type: matchedCode ? "LOW_CONFIDENCE" : "UNIDENTIFIED_DOCUMENT",
+        description: matchedCode
+          ? "Classificação com baixa confiança — revisão humana necessária"
+          : "Documento não identificado — selecione o tipo",
         priority: "ALTA",
       });
       await updateRunStatus(runId, "REQUIRES_REVIEW", { finishedAt: new Date() });
@@ -512,7 +519,6 @@ export async function processDocumentJob(input: ProcessInput) {
     const permanent = [
       "INTEGRITY_HASH_MISMATCH",
       "DOCUMENT_NOT_FOUND",
-      "UNKNOWN_DOCUMENT_TYPE",
       "MOCK_INVALID_JSON",
       "MOCK_OCR_ERROR",
     ].includes(message);

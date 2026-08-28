@@ -27,6 +27,8 @@ Erros:
 | GET/PATCH/DELETE | `/processes/:id` | `processes:read` / `processes:write` | Detalhe; editar dados; excluir (NOVO/CANCELADO ou ADMIN/GESTOR) |
 | POST | `/processes/:id/transition` | `processes:transition` |
 | GET/POST | `/processes/:id/documents` | `documents:read/write` |
+| GET/POST/PATCH | `/processes/:id/documents/inbox` | `documents:read/write` | Upload em lote + resumo de completude + atribuir tipo |
+| GET/PATCH | `/processes/:id/attendance` | `processes:read/write` | Vínculo CRM/WhatsApp (visita, notas) |
 | GET/PATCH | `/processes/:id/checklist` | `documents:read/write` |
 | GET/POST | `/documents/:id` | `documents:read` / `documents:review` |
 | GET/POST | `/pendencies` | `pendencies:read/write` |

@@ -6,6 +6,8 @@ import { hasPermission } from "@/domain/rbac/permissions";
 import { StatusBadge } from "@/components/status-badge";
 import { ProcessActions } from "@/components/process-actions";
 import { ProcessDocumentsPanel } from "@/components/process-documents-panel";
+import { ProcessDocumentInboxPanel } from "@/components/process-document-inbox-panel";
+import { ProcessAttendancePanel } from "@/components/process-attendance-panel";
 import { ProcessDossierPanel } from "@/components/process-dossier-panel";
 import { ProcessFinancialPanel } from "@/components/process-financial-panel";
 import { ProcessOperationalPanel } from "@/components/process-operational-panel";
@@ -186,6 +188,10 @@ export default async function ProcessDetailPage({
       ) : null}
 
       {canDecision ? <ProcessDossierPanel processId={process.id} /> : null}
+
+      <ProcessAttendancePanel processId={process.id} />
+
+      <ProcessDocumentInboxPanel processId={process.id} />
 
       <ProcessDocumentsPanel processId={process.id} />
 

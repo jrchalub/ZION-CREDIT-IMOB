@@ -1483,6 +1483,31 @@ export const notifications = pgTable(
   ],
 );
 
+/** 6.7 — CRM/WhatsApp link on the process (no chat platform). */
+export const processAttendance = pgTable(
+  "process_attendance",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    processId: uuid("process_id")
+      .notNull()
+      .references(() => financingProcesses.id, { onDelete: "cascade" }),
+    externalConversationId: text("external_conversation_id"),
+    lastInteractionAt: timestamp("last_interaction_at", { withTimezone: true }),
+    nextVisitAt: timestamp("next_visit_at", { withTimezone: true }),
+    nextVisitLocation: text("next_visit_location"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("process_attendance_process_uidx").on(table.tenantId, table.processId),
+    index("process_attendance_tenant_idx").on(table.tenantId),
+  ],
+);
+
 /** FASE 6.3 — secure client portal access (raw token never stored). */
 export const portalAccessTokens = pgTable(
   "portal_access_tokens",

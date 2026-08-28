@@ -35,6 +35,7 @@ Um corretor comercial pode trabalhar com **vários** correspondentes bancários 
 - Upload de PDFs/binários ao banco
 - Auto-transição para `APROVADO` / `REPROVADO`
 - Escolha automática / ranking de correspondentes
+- A caixa de documentos (intake) **não** envia arquivos ao correspondente/banco; o envio institucional permanece manual no painel FASE 7.
 
 ## Env
 

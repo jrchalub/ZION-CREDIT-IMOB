@@ -31,6 +31,23 @@ export function startDocumentProcessingWorker() {
         correlationId,
         jobId: job.id ? `bull-${job.id}` : `doc-${documentId}-${Date.now()}`,
         attempt: job.attemptsMade + 1,
+      }).then(async (result) => {
+        try {
+          const { organizeDocumentAfterProcessing } = await import(
+            "@/modules/document-intake/DocumentOrganizerService"
+          );
+          await organizeDocumentAfterProcessing({
+            documentId,
+            tenantId,
+            processId,
+          });
+        } catch (error) {
+          log.error("Inbox organize failed", {
+            documentId,
+            message: error instanceof Error ? error.message : "unknown",
+          });
+        }
+        return result;
       });
     },
     {
