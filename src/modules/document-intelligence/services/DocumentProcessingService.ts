@@ -17,7 +17,7 @@ import { applyExtractedDocumentValidity } from "@/domain/documents/document-vali
 import { sha256 } from "@/domain/documents/upload-validation";
 import { getStorageProvider } from "@/infra/storage";
 import { createLogger } from "@/lib/logger";
-import { getOCRProvider } from "../ocr/MockOCRProvider";
+import { getOCRProvider } from "../ocr";
 import { getDocumentAIProvider } from "../providers";
 import {
   classificationResultSchema,

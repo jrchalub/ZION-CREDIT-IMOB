@@ -21,6 +21,7 @@ import {
   upsertDocumentCatalog,
 } from "@/domain/documents/catalog";
 import { generateChecklistForProcess } from "@/domain/documents/checklist";
+import { demoSeedAllowed } from "@/modules/go-live/production-guards";
 
 async function hashPassword(password: string) {
   return bcrypt.hash(password, 12);
@@ -133,9 +134,17 @@ async function seedDocumentCatalog() {
 }
 
 async function seed() {
-  console.log("Seeding ZION CREDIT demo data...");
+  console.log("Seeding ZION CREDIT...");
 
   await seedDocumentCatalog();
+
+  if (!demoSeedAllowed(process.env)) {
+    console.log(
+      "NODE_ENV=production: catálogo sincronizado. Dados demo NÃO foram criados (ALLOW_DEMO_SEED=true para forçar).",
+    );
+    return;
+  }
+
   await ensureCorrespondentUserLinks();
   await seedBankingCorrespondents();
 

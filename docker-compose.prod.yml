@@ -1,0 +1,51 @@
+# Produção / staging: app Next + workers BullMQ.
+# Infra (postgres/redis/minio) continua no docker-compose.yml.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zion-credit-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "-qO-",
+          "http://127.0.0.1:3000/api/v1/health/live",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  workers:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zion-credit-workers
+    restart: unless-stopped
+    command: ["pnpm", "workers"]
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy

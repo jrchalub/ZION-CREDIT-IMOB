@@ -1,7 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const PUBLIC_PATHS = ["/login", "/api/v1/auth", "/portal", "/api/v1/portal"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/api/v1/auth",
+  "/portal",
+  "/api/v1/portal",
+  "/api/v1/health/live",
+  "/api/v1/health/ready",
+  "/api/v1/webhooks/crm",
+];
 
 function isPublic(pathname: string) {
   return PUBLIC_PATHS.some(

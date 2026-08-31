@@ -9,6 +9,7 @@ export const PROMPT_VERSIONS = {
   creditCardExtraction: "credit-card-extraction-v1",
   payrollExtraction: "payroll-extraction-v1",
   consistency: "document-consistency-v1",
+  ocrVision: "ocr-vision-v1",
 } as const;
 
 export type PromptVersion =

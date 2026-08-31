@@ -22,7 +22,9 @@
     "setup": "pnpm db:up && pnpm db:migrate && pnpm db:seed",
     "infra:check": "tsx src/scripts/check-infra.ts",
     "workers": "tsx src/workers/run-workers.ts",
-    "workers:documents": "tsx src/workers/run-workers.ts"
+    "workers:documents": "tsx src/workers/run-workers.ts",
+    "go-live:check": "tsx src/scripts/assert-production.ts",
+    "db:catalog": "tsx src/db/seed.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

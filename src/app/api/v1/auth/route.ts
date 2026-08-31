@@ -2,6 +2,7 @@ import { login, logout } from "@/domain/auth/service";
 import { getSession } from "@/lib/auth/session";
 import { jsonError, jsonOk } from "@/lib/api";
 import { createCorrelationId, getRequestMeta } from "@/lib/request";
+import { assertLoginRateLimit } from "@/modules/go-live/rate-limit";
 import { z } from "zod";
 
 const loginSchema = z.object({
@@ -14,6 +15,7 @@ export async function POST(request: Request) {
   try {
     const body = loginSchema.parse(await request.json());
     const meta = getRequestMeta(request);
+    await assertLoginRateLimit(meta.ip);
     const session = await login({
       ...body,
       ...meta,

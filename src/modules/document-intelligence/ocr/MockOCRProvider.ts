@@ -71,7 +71,3 @@ export class MockOCRProvider implements OCRProvider {
     };
   }
 }
-
-export function getOCRProvider(): OCRProvider {
-  return new MockOCRProvider();
-}
