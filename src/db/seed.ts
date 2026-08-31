@@ -23,6 +23,11 @@ import {
 import { generateChecklistForProcess } from "@/domain/documents/checklist";
 import { demoSeedAllowed } from "@/modules/go-live/production-guards";
 
+const seedRuntimeEnv = {
+  NODE_ENV: process.env.NODE_ENV,
+  ALLOW_DEMO_SEED: process.env.ALLOW_DEMO_SEED,
+};
+
 async function hashPassword(password: string) {
   return bcrypt.hash(password, 12);
 }
@@ -138,7 +143,7 @@ async function seed() {
 
   await seedDocumentCatalog();
 
-  if (!demoSeedAllowed(process.env)) {
+  if (!demoSeedAllowed(seedRuntimeEnv)) {
     console.log(
       "NODE_ENV=production: catálogo sincronizado. Dados demo NÃO foram criados (ALLOW_DEMO_SEED=true para forçar).",
     );

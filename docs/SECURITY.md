@@ -15,7 +15,9 @@
 ## Infra
 
 - PostgreSQL self-hosted
-- Redis (cache/filas/rate-limit futuro)
+- Redis (cache/filas/rate-limit de login)
+- Webhook CRM com secret (`CRM_WEBHOOK_SECRET`, comparação constant-time)
+- `GET /health/live` e `/health/ready` públicos; demais APIs autenticadas
 - MinIO S3-compatible
 
 ## Sem BaaS

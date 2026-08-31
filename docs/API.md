@@ -34,7 +34,10 @@ Erros:
 | GET/POST | `/pendencies` | `pendencies:read/write` |
 | PATCH | `/pendencies/:id` | `pendencies:write` |
 | GET | `/document-types` | `documents:read` |
-| GET | `/health` | autenticado (postgres/redis/minio) |
+| GET | `/health` | autenticado (postgres/redis/minio + providers OCR/IA) |
+| GET | `/health/live` | público (processo no ar) |
+| GET | `/health/ready` | público (Postgres + Redis; 503 se não pronto) |
+| POST | `/webhooks/crm` | `x-zion-webhook-secret` ou `Authorization: Bearer` | Atualiza `process_attendance` por tenant + WhatsApp |
 
 ## Endpoints FASE 3 — Document Intelligence
 
@@ -74,6 +77,21 @@ UI: `/documents/:id/review`
 FASE 6.5: criar pendência com `notifyClient` gera token de portal + mensagem WhatsApp/email (link apenas; sem documento no canal).  
 FASE 6.6: integrações de **leitura** apenas.  
 FASE 7: envio institucional via `FinancingProvider` (metadados; sem binários na v1). Cada submissão registra correspondente bancário. APROVADO/REPROVADO só com transição humana.
+
+FASE 8 webhook CRM (não envia ao banco):
+
+```http
+POST /api/v1/webhooks/crm
+x-zion-webhook-secret: <CRM_WEBHOOK_SECRET>
+
+{
+  "tenantSlug": "zion-demo",
+  "conversationId": "wa-123",
+  "phone": "11999998888",
+  "occurredAt": "2026-08-31T14:00:00.000Z",
+  "processNumber": "optional"
+}
+```
 
 Disclaimer obrigatório: suporte à decisão — não é aprovação bancária. Sem score mágico.
 

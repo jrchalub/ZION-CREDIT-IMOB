@@ -14,7 +14,13 @@ async function main() {
 
   const shutdown = async (signal: string) => {
     log.info("Shutting down workers", { signal });
+    const force = setTimeout(() => {
+      log.error("Worker shutdown timed out");
+      process.exit(1);
+    }, 25_000);
+    force.unref();
     await Promise.all([documentWorker.close(), financialWorker.close()]);
+    clearTimeout(force);
     process.exit(0);
   };
 

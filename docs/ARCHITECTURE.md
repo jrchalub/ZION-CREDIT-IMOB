@@ -48,10 +48,14 @@ documents.status          → ciclo documental (VALIDADO só humano)
 document_processing_runs  → pipeline OCR/IA (COMPLETED ≠ VALIDADO)
 
 DocumentAIProvider (mock | openai)
-OCRProvider (mock / native PDF text)
+OCRProvider (mock | openai vision + native PDF text)
 ```
 
-Worker: `pnpm workers`
+Worker: `pnpm workers` (SIGTERM fecha filas)
+
+## Go-live (FASE 8)
+
+Health live/ready, rate-limit de login, seed sem demo em produção, webhook CRM → `process_attendance`, `Dockerfile` + `docker-compose.prod.yml`. Ver [`DEPLOYMENT.md`](./DEPLOYMENT.md).
 
 ## Financial Analysis (FASE 4 — PRODUCTION CLOSED)
 
@@ -112,6 +116,8 @@ src/
     credit-decision-support/   # FASE 5 (frozen)
     operations/                # FASE 6 (frozen)
     financing-integrations/    # FASE 7
+    document-intake/           # caixa de documentos + CRM
+    go-live/                   # FASE 8
   workers/       # BullMQ workers
   infra/         # redis, queues, storage providers
   lib/           # auth, api, logger, cpf

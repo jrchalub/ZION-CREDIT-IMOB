@@ -12,15 +12,20 @@ OCR:
 
 ```text
 OCRProvider
-  └─ MockOCRProvider (+ native PDF text when usable)
+  ├─ MockOCRProvider (+ native PDF text when usable)
+  └─ OpenAIOCRProvider (imagens vision; PDF nativo se houver texto)
 ```
+
+`OCR_PROVIDER=mock|openai`. Se vazio, segue `AI_PROVIDER`. PDF escaneado sem texto extraível **não** é rasterizado — cai em revisão humana.
 
 ## Env
 
 ```text
 AI_PROVIDER=mock|openai
+OCR_PROVIDER=          # opcional; senão herda AI_PROVIDER
 OPENAI_API_KEY=
 OPENAI_MODEL=
+OPENAI_OCR_MODEL=gpt-4o-mini
 AI_CLASSIFICATION_AUTO_THRESHOLD=0.90
 AI_CLASSIFICATION_REVIEW_THRESHOLD=0.70
 MOCK_AI_SCENARIO=

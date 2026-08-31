@@ -73,3 +73,5 @@ Núcleo de crédito (FASES 3–5) permanece congelado.
 ## Incremento 6.7 — Caixa de documentos + CRM link
 
 Upload em lote (`/processes/:id/documents/inbox`) reutiliza o worker FASE 3. Organização automática só com `AUTO_SUGGESTED`. Completude AUTÔNOMO (3 extratos / faturas) e CLT (2 contracheques). Painel **Atendimento** (`process_attendance`) vincula conversa CRM — sem plataforma de WhatsApp nova. **Não envia ao banco.**
+
+FASE 8: o CRM pode chamar `POST /api/v1/webhooks/crm` (`tenantSlug`, `conversationId`, `phone`) para gravar a última interação no mesmo painel.

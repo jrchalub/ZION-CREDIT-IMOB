@@ -18,6 +18,7 @@ pnpm test
 - Payment capacity + disclaimer
 - Hardening FASE 4 (15 cenários) + snapshot imutável / hash
 - Fatores explicáveis FASE 5 + DecisionSupportSnapshot + matriz (sem score)
+- Go-live: seletor OCR, AUTH_SECRET, seed demo, webhook secret, `go-live:check`
 
 ## Mock controlável (sem custo de IA)
 

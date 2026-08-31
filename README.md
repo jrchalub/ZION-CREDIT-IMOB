@@ -62,7 +62,9 @@ Acesse: [http://localhost:3000](http://localhost:3000)
 | `pnpm db:migrate` | Aplica migrations |
 | `pnpm db:seed` | Dados demo |
 | `pnpm setup` | up + migrate + seed |
-| `pnpm workers` | Worker BullMQ (document-processing) |
+| `pnpm workers` | Workers BullMQ (document-processing + financial-analysis) |
+| `pnpm go-live:check` | Valida env de produção (`NODE_ENV=production`) |
+| `pnpm db:catalog` | Upsert catálogo (em produção não cria usuários demo) |
 
 ## Documentação
 
@@ -90,3 +92,4 @@ Acesse: [http://localhost:3000](http://localhost:3000)
 5. FASE 5 — Credit Decision Support ✅ **PRODUCTION CLOSED** (ver `docs/BASELINE_FASE_5.md`)
 6. FASE 6 — Operations & Integrations ✅ **PRODUCTION CLOSED**
 7. FASE 7 — Institutional Financing Integrations ✅ **BASELINE v1** (ver `docs/FINANCING_INTEGRATIONS.md`)
+8. FASE 8 — Go-live operacional ✅ **BASELINE v1** (OCR/IA, workers, health, webhook CRM, Docker — ver `docs/DEPLOYMENT.md`)

@@ -35,6 +35,7 @@ Caixa de documentos (`src/modules/document-intake`) consome este pipeline: uploa
 
 - `AI_PROVIDER=mock` (default) — cenários: SUCCESS, LOW_CONFIDENCE, NAME_MISMATCH, CPF_MISMATCH, INVALID_JSON, PROVIDER_ERROR, OCR_ERROR
 - `AI_PROVIDER=openai` — usa OpenAI se `OPENAI_API_KEY` estiver definida; senão fallback mock
+- `OCR_PROVIDER=openai` — vision em JPEG/PNG/WebP; PDF com texto nativo; PDF só imagem → revisão (sem rasterizer). Se `OCR_PROVIDER` vazio, herda `AI_PROVIDER`
 
 Controllers nunca chamam vendors diretamente.
 

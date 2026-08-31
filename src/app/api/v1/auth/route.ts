@@ -13,9 +13,9 @@ const loginSchema = z.object({
 export async function POST(request: Request) {
   const correlationId = createCorrelationId(request);
   try {
-    const body = loginSchema.parse(await request.json());
     const meta = getRequestMeta(request);
     await assertLoginRateLimit(meta.ip);
+    const body = loginSchema.parse(await request.json());
     const session = await login({
       ...body,
       ...meta,

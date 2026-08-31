@@ -53,6 +53,22 @@ Não reescrever crédito/IA nesta fase.
 
 Não avançar 7.1 até o modelo multi-correspondente estar estável.
 
+## FASE 8 — Go-live operacional
+
+**STATUS: BASELINE v1**
+
+Produção operacional **sem** SDK Caixa (7.1 continua fora de escopo).
+
+| Item | Comportamento |
+|------|----------------|
+| OCR | `OCR_PROVIDER=openai` (ou herda `AI_PROVIDER`) — imagens via vision; PDF com texto nativo; PDF escaneado sem rasterizer → revisão humana |
+| Workers | Processo `pnpm workers` com SIGTERM/SIGINT |
+| Health | `GET /api/v1/health/live` (público) · `GET /api/v1/health/ready` (público, 503 se Postgres/Redis falhar) · `GET /api/v1/health` autenticado |
+| Login | Rate-limit Redis (`LOGIN_RATE_LIMIT_*`) |
+| Seed | Em `NODE_ENV=production` só catálogo, sem usuários demo (`ALLOW_DEMO_SEED=true` para forçar) |
+| CRM | `POST /api/v1/webhooks/crm` → `process_attendance` (não envia ao banco) |
+| Deploy | `Dockerfile` + `docker-compose.prod.yml` · `pnpm go-live:check` |
+
 ## Roadmap
 
 | Fase | Nome | Status |
@@ -64,3 +80,4 @@ Não avançar 7.1 até o modelo multi-correspondente estar estável.
 | 5 | Credit Decision Support | **PRODUCTION CLOSED** |
 | 6 | Operations & Integrations | **PRODUCTION CLOSED** |
 | 7 | Institutional Financing Integrations | **BASELINE v1** |
+| 8 | Go-live operacional | **BASELINE v1** |
