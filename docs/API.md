@@ -71,12 +71,13 @@ UI: `/documents/:id/review`
 | GET/POST | `/pendencies` | `pendencies:read/write` | FASE 6.4 — create OPEN; notify emite deep link (6.5) |
 | PATCH | `/pendencies/:id` | `pendencies:write` ou `pendencies:respond` | Máquina OPEN→SUBMITTED→… |
 | GET/POST | `/processes/:id/integrations` | `integrations:read/write` | FASE 6.6 — Bureau / Bank read |
-| GET/POST | `/processes/:id/financing` | `financing:read/write` | FASE 7 — list/submit (`bankingCorrespondentId` obrigatório no POST) |
+| GET/POST | `/processes/:id/financing` | `financing:read/write` | FASE 7/7.1 — POST `{ institution: "CAIXA"\|"OUTRO", bankingCorrespondentId }`; GET inclui `gate` |
 | POST | `/processes/:id/financing/:submissionId/track` | `financing:write` | FASE 7 — track da submissão específica |
+| GET/PATCH | `/settings` | `settings:write` | FASE 7.1 — `{ caixaSdkEnabled }` escritório |
 
 FASE 6.5: criar pendência com `notifyClient` gera token de portal + mensagem WhatsApp/email (link apenas; sem documento no canal).  
 FASE 6.6: integrações de **leitura** apenas.  
-FASE 7: envio institucional via `FinancingProvider` (metadados; sem binários na v1). Cada submissão registra correspondente bancário. APROVADO/REPROVADO só com transição humana.
+FASE 7: envio institucional via `FinancingProvider` (metadados; sem binários na v1). Cada submissão registra correspondente bancário. APROVADO/REPROVADO só com transição humana. FASE 7.1: Caixa só se escritório + cliente autorizarem; outro banco não chama o SDK.
 
 FASE 8 webhook CRM (não envia ao banco):
 

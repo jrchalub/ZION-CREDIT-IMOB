@@ -7,6 +7,7 @@ import {
   FileSearch,
   LayoutDashboard,
   LogOut,
+  Settings,
   Users,
 } from "lucide-react";
 import type { UserRole } from "@/domain/rbac/permissions";
@@ -18,6 +19,7 @@ const ICONS = {
   "/clients": Users,
   "/processes": ClipboardList,
   "/audit": FileSearch,
+  "/settings": Settings,
 } as const;
 
 export function AppShell({

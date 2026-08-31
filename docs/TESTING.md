@@ -19,6 +19,7 @@ pnpm test
 - Hardening FASE 4 (15 cenários) + snapshot imutável / hash
 - Fatores explicáveis FASE 5 + DecisionSupportSnapshot + matriz (sem score)
 - Go-live: seletor OCR, AUTH_SECRET, seed demo, webhook secret, `go-live:check`
+- FASE 7.1: gate Caixa (opt-in cliente, tenant, produção sem mock silencioso)
 
 ## Mock controlável (sem custo de IA)
 

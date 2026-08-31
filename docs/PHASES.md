@@ -51,13 +51,23 @@ Não reescrever crédito/IA nesta fase.
 
 `FinancingProvider` multi-instituição (Caixa mock/HTTP) com **correspondente bancário obrigatório por submissão** — ver [`FINANCING_INTEGRATIONS.md`](./FINANCING_INTEGRATIONS.md).
 
-Não avançar 7.1 até o modelo multi-correspondente estar estável.
+## FASE 7.1 — SDK Caixa (opcional por cliente)
+
+**STATUS: BASELINE v1**
+
+Envio à Caixa **não é obrigatório**. Camadas:
+
+1. Escritório liga/desliga o canal em **Configurações** (`settings.caixaSdkEnabled`)
+2. Cliente escolhe no processo: não enviar / Caixa / outro banco + autorização
+3. Ambiente: `CAIXA_SDK_ENABLED` + credenciais para o adapter HTTP (sem npm oficial)
+
+Sem autorização, o dossiê fica só no Zion. Outro banco não chama o SDK Caixa.
 
 ## FASE 8 — Go-live operacional
 
 **STATUS: BASELINE v1**
 
-Produção operacional **sem** SDK Caixa (7.1 continua fora de escopo).
+Produção operacional. SDK Caixa é **opt-in** (FASE 7.1), não automático.
 
 | Item | Comportamento |
 |------|----------------|
@@ -80,4 +90,5 @@ Produção operacional **sem** SDK Caixa (7.1 continua fora de escopo).
 | 5 | Credit Decision Support | **PRODUCTION CLOSED** |
 | 6 | Operations & Integrations | **PRODUCTION CLOSED** |
 | 7 | Institutional Financing Integrations | **BASELINE v1** |
+| 7.1 | SDK Caixa (opcional por cliente) | **BASELINE v1** |
 | 8 | Go-live operacional | **BASELINE v1** |

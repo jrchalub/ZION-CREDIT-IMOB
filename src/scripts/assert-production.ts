@@ -25,6 +25,17 @@ export function collectProductionIssues(
   if (!env.MINIO_ENDPOINT) issues.push("MINIO_ENDPOINT ausente");
   if (!env.MINIO_ACCESS_KEY) issues.push("MINIO_ACCESS_KEY ausente");
   if (!env.MINIO_SECRET_KEY) issues.push("MINIO_SECRET_KEY ausente");
+  if (
+    env.CAIXA_SDK_ENABLED === "true" ||
+    (env.FINANCING_PROVIDER ?? "").toLowerCase() === "caixa-sdk"
+  ) {
+    if (!env.CAIXA_API_URL) issues.push("CAIXA_API_URL ausente com SDK Caixa ligado");
+    const hasToken = Boolean(env.CAIXA_API_TOKEN);
+    const hasOauth = Boolean(env.CAIXA_CLIENT_ID && env.CAIXA_CLIENT_SECRET);
+    if (!hasToken && !hasOauth) {
+      issues.push("CAIXA_API_TOKEN ou CAIXA_CLIENT_ID/SECRET ausentes com SDK Caixa ligado");
+    }
+  }
   return issues;
 }
 

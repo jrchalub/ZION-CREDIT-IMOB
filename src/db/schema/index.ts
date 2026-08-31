@@ -68,6 +68,13 @@ export const amortizationSystemEnum = pgEnum("amortization_system", [
   "PRICE",
 ]);
 
+/** Cliente escolhe o destino; NENHUM = não enviar a instituição. */
+export const institutionalChannelEnum = pgEnum("institutional_channel", [
+  "NENHUM",
+  "CAIXA",
+  "OUTRO",
+]);
+
 export const tenants = pgTable("tenants", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
@@ -315,6 +322,14 @@ export const financingProcesses = pgTable(
     developmentId: uuid("development_id").references(() => developments.id),
     unitId: uuid("unit_id").references(() => units.id),
     intendedBank: text("intended_bank"),
+    /** Destino institucional escolhido pelo cliente (opcional). */
+    institutionalChannel: institutionalChannelEnum("institutional_channel")
+      .notNull()
+      .default("NENHUM"),
+    /** Cliente autorizou encaminhamento a uma instituição. */
+    institutionalSendOptIn: boolean("institutional_send_opt_in")
+      .notNull()
+      .default(false),
     propertyValue: numeric("property_value", { precision: 14, scale: 2 }),
     downPayment: numeric("down_payment", { precision: 14, scale: 2 }),
     financedAmount: numeric("financed_amount", { precision: 14, scale: 2 }),
@@ -1592,6 +1607,7 @@ export const integrationCalls = pgTable(
 /** FASE 7 — institutional financing submit/track (FinancingProvider). */
 export const financingInstitutionEnum = pgEnum("financing_institution", [
   "CAIXA",
+  "OUTRO",
 ]);
 
 export const financingSubmissionStatusEnum = pgEnum(

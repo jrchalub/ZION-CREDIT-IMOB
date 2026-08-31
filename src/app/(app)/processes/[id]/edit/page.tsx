@@ -28,6 +28,8 @@ export default async function EditProcessPage({
         clientName: process.clientName,
         incomeProfile: process.incomeProfile,
         intendedBank: process.intendedBank,
+        institutionalChannel: process.institutionalChannel,
+        institutionalSendOptIn: process.institutionalSendOptIn,
         propertyValue: process.propertyValue,
         downPayment: process.downPayment,
         financedAmount: process.financedAmount,

@@ -99,6 +99,13 @@
       "when": 1787870000000,
       "tag": "0013_document_intake_attendance",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1787874000000,
+      "tag": "0014_caixa_sdk_optional",
+      "breakpoints": true
     }
   ]
 }

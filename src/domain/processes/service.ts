@@ -59,6 +59,8 @@ export const createProcessSchema = z.object({
   developmentId: z.uuid().optional().nullable(),
   unitId: z.uuid().optional().nullable(),
   intendedBank: z.string().max(80).optional().nullable(),
+  institutionalChannel: z.enum(["NENHUM", "CAIXA", "OUTRO"]).optional(),
+  institutionalSendOptIn: z.boolean().optional(),
   propertyValue: optionalMoney,
   downPayment: optionalMoney,
   financedAmount: optionalMoney,
@@ -89,6 +91,8 @@ export const updateProcessSchema = z.object({
     ])
     .optional(),
   intendedBank: z.string().max(80).optional().nullable(),
+  institutionalChannel: z.enum(["NENHUM", "CAIXA", "OUTRO"]).optional(),
+  institutionalSendOptIn: z.boolean().optional(),
   propertyValue: optionalMoney,
   downPayment: optionalMoney,
   financedAmount: optionalMoney,
@@ -276,6 +280,11 @@ export async function createProcess(
       developmentId: input.developmentId ?? null,
       unitId: input.unitId ?? null,
       intendedBank: input.intendedBank ?? null,
+      institutionalChannel: input.institutionalChannel ?? "NENHUM",
+      institutionalSendOptIn:
+        (input.institutionalChannel ?? "NENHUM") === "NENHUM"
+          ? false
+          : Boolean(input.institutionalSendOptIn),
       propertyValue: input.propertyValue ?? null,
       downPayment: input.downPayment ?? null,
       financedAmount: input.financedAmount ?? null,
@@ -329,6 +338,13 @@ export async function updateProcess(
     input.incomeProfile !== undefined &&
     input.incomeProfile !== current.incomeProfile;
 
+  const nextChannel =
+    input.institutionalChannel ?? current.institutionalChannel;
+  const nextOptIn =
+    nextChannel === "NENHUM"
+      ? false
+      : (input.institutionalSendOptIn ?? current.institutionalSendOptIn);
+
   const [updated] = await db
     .update(financingProcesses)
     .set({
@@ -337,6 +353,13 @@ export async function updateProcess(
         : {}),
       ...(input.intendedBank !== undefined
         ? { intendedBank: input.intendedBank }
+        : {}),
+      ...(input.institutionalChannel !== undefined ||
+      input.institutionalSendOptIn !== undefined
+        ? {
+            institutionalChannel: nextChannel,
+            institutionalSendOptIn: nextOptIn,
+          }
         : {}),
       ...(input.propertyValue !== undefined
         ? { propertyValue: input.propertyValue }
@@ -386,6 +409,8 @@ export async function updateProcess(
     oldValue: {
       incomeProfile: current.incomeProfile,
       intendedBank: current.intendedBank,
+      institutionalChannel: current.institutionalChannel,
+      institutionalSendOptIn: current.institutionalSendOptIn,
       propertyValue: current.propertyValue,
       downPayment: current.downPayment,
       financedAmount: current.financedAmount,
@@ -396,6 +421,8 @@ export async function updateProcess(
     newValue: {
       incomeProfile: updated.incomeProfile,
       intendedBank: updated.intendedBank,
+      institutionalChannel: updated.institutionalChannel,
+      institutionalSendOptIn: updated.institutionalSendOptIn,
       propertyValue: updated.propertyValue,
       downPayment: updated.downPayment,
       financedAmount: updated.financedAmount,

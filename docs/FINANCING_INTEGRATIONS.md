@@ -31,19 +31,36 @@ Um corretor comercial pode trabalhar com **vários** correspondentes bancários 
 
 ## Fora de escopo v1
 
-- SDK real Caixa / autenticação bancária
 - Upload de PDFs/binários ao banco
 - Auto-transição para `APROVADO` / `REPROVADO`
 - Escolha automática / ranking de correspondentes
 - A caixa de documentos (intake) **não** envia arquivos ao correspondente/banco; o envio institucional permanece manual no painel FASE 7.
 
+## FASE 7.1 — SDK Caixa opcional
+
+O canal Caixa **não é padrão**. Três interruptores:
+
+| Camada | Onde | Padrão |
+|--------|------|--------|
+| Escritório | Configurações → `caixaSdkEnabled` | desligado |
+| Cliente | processo `institutional_channel` + `institutional_send_opt_in` | NENHUM / false |
+| Ambiente | `CAIXA_SDK_ENABLED` + `CAIXA_API_URL` / token ou OAuth | desligado |
+
+`institutional_channel`: `NENHUM` (não envia) · `CAIXA` · `OUTRO` (registro manual, sem SDK).
+
+Adapter `caixa-sdk` fala HTTP com o gateway configurado (não há pacote npm oficial da Caixa Habitação). Sem CPF completo nem binários.
+
 ## Env
 
 | Var | Uso |
 |-----|-----|
-| `FINANCING_PROVIDER` | `mock` \| `http` |
+| `FINANCING_PROVIDER` | `mock` \| `http` (ignorado se `CAIXA_SDK_ENABLED=true`) |
 | `FINANCING_PROVIDER_URL` | HTTP POST submit/track |
 | `FINANCING_PROVIDER_TOKEN` | Bearer opcional |
+| `CAIXA_SDK_ENABLED` | `true` para usar adapter `caixa-sdk` |
+| `CAIXA_API_URL` | Base do gateway Caixa |
+| `CAIXA_API_TOKEN` | Bearer estático (opcional se OAuth) |
+| `CAIXA_TOKEN_URL` / `CAIXA_CLIENT_ID` / `CAIXA_CLIENT_SECRET` | OAuth client credentials |
 
 ## Permissões e isolamento
 
@@ -71,7 +88,8 @@ Múltiplas submissões no mesmo processo são preservadas (ex.: CredOnline + Fin
 | Método | Rota | Body |
 |--------|------|------|
 | GET | `/api/v1/processes/:id/financing` | items + bankingCorrespondents |
-| POST | `/api/v1/processes/:id/financing` | `{ institution, bankingCorrespondentId }` **obrigatório** |
+| POST | `/api/v1/processes/:id/financing` | `{ institution: "CAIXA"\|"OUTRO", bankingCorrespondentId }` |
+| GET/PATCH | `/api/v1/settings` | `caixaSdkEnabled` (ADMIN/GESTOR) |
 | POST | `/api/v1/processes/:id/financing/:submissionId/track` | track da submissão específica |
 
 Sem `bankingCorrespondentId` → `400 BANKING_CORRESPONDENT_REQUIRED` (não cria linha).
@@ -81,8 +99,10 @@ Sem `bankingCorrespondentId` → `400 BANKING_CORRESPONDENT_REQUIRED` (não cria
 Painel **Envio institucional**:
 
 ```
+Destino do cliente: [ Não enviar | Caixa | Outro banco ]
+[ ] Cliente autorizou
 Correspondente bancário: [ CredOnline ▼ ]
-[ Enviar à Caixa (mock) ]
+[ Enviar à Caixa ]  [ Registrar outro banco ]
 ```
 
 Histórico exibe correspondente, usuário, status e eventos por submissão.

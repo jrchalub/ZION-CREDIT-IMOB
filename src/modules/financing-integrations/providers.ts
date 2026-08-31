@@ -5,6 +5,11 @@ import type {
   FinancingSubmitInput,
   FinancingTrackInput,
 } from "./FinancingProvider";
+import {
+  CaixaSdkFinancingProvider,
+  ManualOtherBankProvider,
+} from "./caixa-sdk-provider";
+import { envCaixaSdkEnabled } from "./caixa-send-gate";
 
 /**
  * Local mock for Caixa — no real institutional channel.
@@ -165,12 +170,17 @@ export class HttpFinancingProvider implements FinancingProvider {
 export function getFinancingProvider(
   institution: FinancingInstitution = "CAIXA",
 ): FinancingProvider {
+  if (institution === "OUTRO") {
+    return new ManualOtherBankProvider();
+  }
+
+  if (envCaixaSdkEnabled(process.env)) {
+    return new CaixaSdkFinancingProvider();
+  }
+
   const mode = (process.env.FINANCING_PROVIDER ?? "mock").toLowerCase();
   if (mode === "http") {
     return new HttpFinancingProvider(institution);
-  }
-  if (institution === "CAIXA") {
-    return new MockCaixaFinancingProvider();
   }
   return new MockCaixaFinancingProvider();
 }

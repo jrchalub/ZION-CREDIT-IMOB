@@ -86,6 +86,27 @@ describe("assert-production", () => {
     });
     expect(issues.some((item) => item.includes("OPENAI_API_KEY"))).toBe(true);
   });
+
+  it("requires Caixa credentials only when SDK is enabled", () => {
+    const base = {
+      DATABASE_URL: "postgres://x",
+      REDIS_URL: "redis://x",
+      AUTH_SECRET: "a".repeat(32),
+      APP_URL: "https://app.example",
+      CRM_WEBHOOK_SECRET: "secret",
+      MINIO_ENDPOINT: "minio",
+      MINIO_ACCESS_KEY: "k",
+      MINIO_SECRET_KEY: "s",
+    };
+    expect(collectProductionIssues(base).some((item) => item.includes("CAIXA"))).toBe(
+      false,
+    );
+    expect(
+      collectProductionIssues({ ...base, CAIXA_SDK_ENABLED: "true" }).some((item) =>
+        item.includes("CAIXA_API_URL"),
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("crm webhook secret header", () => {

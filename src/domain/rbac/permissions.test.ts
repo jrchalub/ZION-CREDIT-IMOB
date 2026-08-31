@@ -43,4 +43,13 @@ describe("rbac", () => {
     expect(hrefs).toContain("/processes");
     expect(hrefs).not.toContain("/audit");
   });
+
+  it("grants gestor settings for Caixa channel toggle", () => {
+    expect(hasPermission("GESTOR", "settings:write")).toBe(true);
+    expect(hasPermission("ANALISTA", "settings:write")).toBe(false);
+    expect(navItemsForRole("ADMIN").map((i) => i.href)).toContain("/settings");
+    expect(navItemsForRole("CORRESPONDENTE").map((i) => i.href)).not.toContain(
+      "/settings",
+    );
+  });
 });

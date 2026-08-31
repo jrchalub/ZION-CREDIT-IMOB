@@ -63,6 +63,8 @@ Regra: **COMPLETED ≠ VALIDADO**.
 | `financing_submissions` | Envio/acompanhamento institucional (FASE 7) |
 | `process_attendance` | Vínculo CRM/WhatsApp + visita (6.7) |
 
+FASE 7.1: `financing_processes.institutional_channel` (`NENHUM`/`CAIXA`/`OUTRO`) e `institutional_send_opt_in`. Flag do escritório em `tenants.settings.caixaSdkEnabled`.
+
 ## Convenções
 
 - UUID como PK

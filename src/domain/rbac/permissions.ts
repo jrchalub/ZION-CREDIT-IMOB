@@ -85,6 +85,7 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "financing:write",
     "audit:read",
     "users:read",
+    "settings:write",
   ],
   ANALISTA: [
     "dashboard:read",
@@ -171,6 +172,7 @@ export function navItemsForRole(role: UserRole): Array<{
       permission: "processes:read" as const,
     },
     { href: "/audit", label: "Auditoria", permission: "audit:read" as const },
+    { href: "/settings", label: "Configurações", permission: "settings:write" as const },
   ];
   return all.filter((item) => !item.permission || hasPermission(role, item.permission));
 }

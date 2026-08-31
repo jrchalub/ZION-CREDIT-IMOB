@@ -3,7 +3,7 @@
  * Domain never imports Caixa/Banco X SDKs — only this interface.
  */
 
-export type FinancingInstitution = "CAIXA";
+export type FinancingInstitution = "CAIXA" | "OUTRO";
 
 export type FinancingSubmitInput = {
   institution: FinancingInstitution;

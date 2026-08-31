@@ -23,6 +23,8 @@ type ProcessEditData = {
   clientName: string;
   incomeProfile: string;
   intendedBank: string | null;
+  institutionalChannel: string;
+  institutionalSendOptIn: boolean;
   propertyValue: string | null;
   downPayment: string | null;
   financedAmount: string | null;
@@ -44,6 +46,8 @@ export function ProcessEditForm({ process }: { process: ProcessEditData }) {
     const payload = {
       incomeProfile: String(form.get("incomeProfile")),
       intendedBank: String(form.get("intendedBank") ?? "") || null,
+      institutionalChannel: String(form.get("institutionalChannel") ?? "NENHUM"),
+      institutionalSendOptIn: form.get("institutionalSendOptIn") === "on",
       propertyValue: String(form.get("propertyValue") ?? "") || null,
       downPayment: String(form.get("downPayment") ?? "") || null,
       financedAmount: String(form.get("financedAmount") ?? "") || null,
@@ -115,12 +119,24 @@ export function ProcessEditForm({ process }: { process: ProcessEditData }) {
 
         <div className="grid gap-4 md:grid-cols-2">
           <label className="text-sm">
-            Banco pretendido
+            Banco pretendido (texto livre)
             <input
               name="intendedBank"
               defaultValue={process.intendedBank ?? ""}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
             />
+          </label>
+          <label className="text-sm">
+            Destino institucional
+            <select
+              name="institutionalChannel"
+              defaultValue={process.institutionalChannel}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            >
+              <option value="NENHUM">Não enviar a banco</option>
+              <option value="CAIXA">Caixa</option>
+              <option value="OUTRO">Outro banco</option>
+            </select>
           </label>
           <label className="text-sm">
             Sistema
@@ -175,6 +191,16 @@ export function ProcessEditForm({ process }: { process: ProcessEditData }) {
             />
           </label>
         </div>
+
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="institutionalSendOptIn"
+            defaultChecked={process.institutionalSendOptIn}
+            className="mt-1"
+          />
+          <span>Cliente autorizou encaminhamento institucional</span>
+        </label>
 
         {error ? <p className="text-sm text-rose-700">{error}</p> : null}
 

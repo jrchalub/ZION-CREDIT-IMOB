@@ -99,6 +99,17 @@ export default async function ProcessDetailPage({
               <dd>{process.intendedBank ?? "—"}</dd>
             </div>
             <div>
+              <dt className="text-slate-500">Envio a banco</dt>
+              <dd>
+                {process.institutionalChannel === "NENHUM"
+                  ? "Não enviar"
+                  : process.institutionalChannel === "CAIXA"
+                    ? "Caixa"
+                    : "Outro banco"}
+                {process.institutionalSendOptIn ? " · autorizado pelo cliente" : " · sem autorização"}
+              </dd>
+            </div>
+            <div>
               <dt className="text-slate-500">Sistema</dt>
               <dd>{process.amortizationSystem ?? "—"}</dd>
             </div>

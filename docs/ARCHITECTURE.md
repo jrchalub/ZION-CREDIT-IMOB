@@ -100,7 +100,7 @@ financing_submissions + events → status ENVIADO_AO_BANCO
 ```
 
 `banking_correspondents` ≠ `correspondents` (comercial FASE 6.2).  
-Ver [`FINANCING_INTEGRATIONS.md`](./FINANCING_INTEGRATIONS.md).
+Envio à Caixa é **opt-in** (FASE 7.1). Ver [`FINANCING_INTEGRATIONS.md`](./FINANCING_INTEGRATIONS.md).
 
 ## Estrutura
 

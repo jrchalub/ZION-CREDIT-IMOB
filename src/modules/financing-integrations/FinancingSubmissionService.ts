@@ -29,12 +29,16 @@ import {
 import { canSubmitFinancing } from "./status-gate";
 import type { FinancingInstitution } from "./FinancingProvider";
 import { getFinancingProvider } from "./providers";
+import {
+  evaluateInstitutionalSend,
+} from "./caixa-send-gate";
+import { getTenantFinancingSettings } from "./tenant-settings";
 
 export { canSubmitFinancing } from "./status-gate";
 export { listSelectableBankingCorrespondents } from "./banking-correspondents";
 
 export const submitFinancingSchema = z.object({
-  institution: z.enum(["CAIXA"]).default("CAIXA"),
+  institution: z.enum(["CAIXA", "OUTRO"]),
   bankingCorrespondentId: z.uuid(),
 });
 
@@ -91,6 +95,34 @@ export async function submitProcessFinancing(
       400,
       `Envio institucional só é permitido em APTO, AGUARDANDO_BANCO ou ENVIADO_AO_BANCO (atual: ${fromStatus}).`,
       "FINANCING_STATUS_GATE",
+    );
+  }
+
+  const tenantSettings = await getTenantFinancingSettings(session);
+  const decision = evaluateInstitutionalSend({
+    envEnabled: tenantSettings.envCaixaSdkEnabled,
+    tenantEnabled: tenantSettings.caixaSdkEnabled,
+    processOptIn: process.institutionalSendOptIn,
+    channel: process.institutionalChannel,
+    productionStrict: globalThis.process.env.NODE_ENV === "production",
+  });
+
+  if (!decision.ok) {
+    throw new AppError(400, decision.message, decision.code);
+  }
+
+  if (decision.mode === "caixa" && input.institution !== "CAIXA") {
+    throw new AppError(
+      400,
+      "Este processo está destinado à Caixa. Altere o canal do cliente para outro banco.",
+      "CHANNEL_MISMATCH",
+    );
+  }
+  if (decision.mode === "outro" && input.institution !== "OUTRO") {
+    throw new AppError(
+      400,
+      "O cliente escolheu outro banco — o SDK Caixa não será usado neste processo.",
+      "CHANNEL_MISMATCH",
     );
   }
 
@@ -151,6 +183,8 @@ export async function submitProcessFinancing(
     bankingCorrespondentId: bankingCorrespondent.id,
     bankingCorrespondentName: bankingCorrespondent.name,
     intendedBank: process.intendedBank,
+    institutionalChannel: process.institutionalChannel,
+    institutionalSendOptIn: process.institutionalSendOptIn,
     propertyValue: process.propertyValue,
     downPayment: process.downPayment,
     financedAmount: process.financedAmount,
@@ -352,7 +386,7 @@ export async function trackProcessFinancing(
     );
   }
 
-  const provider = getFinancingProvider(submission.institution);
+  const provider = getFinancingProvider(submission.institution as FinancingInstitution);
   const result = await provider.track({
     institution: submission.institution,
     tenantId: session.tenantId,
@@ -466,4 +500,34 @@ export async function listProcessFinancing(
     submittedByName: row.submittedByName,
     events: eventsBySubmission.get(row.submission.id) ?? [],
   }));
+}
+
+export async function describeProcessFinancingGate(
+  session: SessionPayload,
+  processId: string,
+) {
+  const process = await loadProcessForSession(session, processId);
+  const tenantSettings = await getTenantFinancingSettings(session);
+  const decision = evaluateInstitutionalSend({
+    envEnabled: tenantSettings.envCaixaSdkEnabled,
+    tenantEnabled: tenantSettings.caixaSdkEnabled,
+    processOptIn: process.institutionalSendOptIn,
+    channel: process.institutionalChannel,
+    productionStrict: globalThis.process.env.NODE_ENV === "production",
+  });
+
+  return {
+    institutionalChannel: process.institutionalChannel,
+    institutionalSendOptIn: process.institutionalSendOptIn,
+    intendedBank: process.intendedBank,
+    tenantCaixaSdkEnabled: tenantSettings.caixaSdkEnabled,
+    envCaixaSdkEnabled: tenantSettings.envCaixaSdkEnabled,
+    caixaCredentialsConfigured: tenantSettings.caixaCredentialsConfigured,
+    caixaProvider: getFinancingProvider("CAIXA").name,
+    canSubmitCaixa: decision.ok && decision.mode === "caixa",
+    canSubmitOther: decision.ok && decision.mode === "outro",
+    blocker: decision.ok
+      ? null
+      : { code: decision.code, message: decision.message },
+  };
 }

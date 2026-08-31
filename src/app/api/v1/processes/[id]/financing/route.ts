@@ -2,6 +2,7 @@ import { requirePermission } from "@/domain/auth/service";
 import {
   listProcessFinancing,
   listSelectableBankingCorrespondents,
+  describeProcessFinancingGate,
   submitFinancingSchema,
   submitProcessFinancing,
 } from "@/modules/financing-integrations/FinancingSubmissionService";
@@ -15,11 +16,12 @@ export async function GET(request: Request, { params }: Params) {
   try {
     const session = await requirePermission("financing:read");
     const { id } = await params;
-    const [items, bankingCorrespondents] = await Promise.all([
+    const [items, bankingCorrespondents, gate] = await Promise.all([
       listProcessFinancing(session, id),
       listSelectableBankingCorrespondents(session),
+      describeProcessFinancingGate(session, id),
     ]);
-    return jsonOk({ items, bankingCorrespondents });
+    return jsonOk({ items, bankingCorrespondents, gate });
   } catch (error) {
     return jsonError(error, correlationId);
   }

@@ -35,6 +35,8 @@ export default function NewProcessPage() {
       clientId: String(form.get("clientId")),
       incomeProfile: String(form.get("incomeProfile")),
       intendedBank: String(form.get("intendedBank") ?? "") || null,
+      institutionalChannel: String(form.get("institutionalChannel") ?? "NENHUM"),
+      institutionalSendOptIn: form.get("institutionalSendOptIn") === "on",
       propertyValue: String(form.get("propertyValue") ?? "") || null,
       downPayment: String(form.get("downPayment") ?? "") || null,
       financedAmount: String(form.get("financedAmount") ?? "") || null,
@@ -126,8 +128,16 @@ export default function NewProcessPage() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <label className="text-sm">
-            Banco pretendido
+            Banco pretendido (texto livre, opcional)
             <input name="intendedBank" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
+          </label>
+          <label className="text-sm">
+            Destino institucional
+            <select name="institutionalChannel" defaultValue="NENHUM" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2">
+              <option value="NENHUM">Não enviar a banco</option>
+              <option value="CAIXA">Caixa</option>
+              <option value="OUTRO">Outro banco</option>
+            </select>
           </label>
           <label className="text-sm">
             Sistema
@@ -165,6 +175,14 @@ export default function NewProcessPage() {
             </select>
           </label>
         </div>
+
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" name="institutionalSendOptIn" className="mt-1" />
+          <span>
+            Cliente autorizou encaminhamento institucional (só vale se o destino
+            não for “Não enviar”)
+          </span>
+        </label>
 
         {error ? <p className="text-sm text-rose-700">{error}</p> : null}
 
