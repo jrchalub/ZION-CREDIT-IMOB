@@ -1,15 +1,21 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable && corepack prepare pnpm@11.9.0 --activate
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml .npmrc ./
 RUN pnpm install --frozen-lockfile
 
 FROM node:22-alpine AS build
 WORKDIR /app
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+ENV NEXT_TELEMETRY_DISABLED=1
+# Placeholders só para o `next build` (rotas importam DATABASE_URL). O EasyPanel injeta os valores reais em runtime.
+ENV DATABASE_URL=postgresql://zioncredit:build@127.0.0.1:5432/zion_credit
+ENV REDIS_URL=redis://127.0.0.1:6379
+ENV AUTH_SECRET=build-time-placeholder-secret-min-32-chars
 RUN corepack enable && corepack prepare pnpm@11.9.0 --activate
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 
 FROM node:22-alpine AS runner

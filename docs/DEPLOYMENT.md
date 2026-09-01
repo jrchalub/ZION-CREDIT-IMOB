@@ -20,6 +20,12 @@ pnpm dev
 
 Secrets apenas via variáveis de ambiente.
 
+## EasyPanel / Docker (GitHub)
+
+O `pnpm` 11 recusa postinstall nativo (`esbuild`, etc.) se não estiver na allowlist. Isso está em `package.json` → `pnpm.onlyBuiltDependencies` e em `.npmrc`.
+
+No EasyPanel, após o push, use o **Dockerfile** do repositório (não Nixpacks). Variáveis reais (`DATABASE_URL`, `REDIS_URL`, `AUTH_SECRET`, MinIO, etc.) vão no serviço em **runtime**, não precisam existir no momento do `docker build`.
+
 ## Go-live (FASE 8)
 
 Checklist antes de `NODE_ENV=production`:
