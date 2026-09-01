@@ -45,6 +45,48 @@ O `docker-compose.yml` **não** usa `container_name` nem `ports` (exigência do 
 
 Logs normais no primeiro deploy: `Migrations complete`, `Ready in …ms`, workers `All workers started`. Os `NOTICE` do Postgres (truncated identifier) são avisos, não erro.
 
+### Domínios (site não abre)
+
+No modal **Atualizar Domínio** (Compose `credimob`):
+
+| Campo | Valor |
+|-------|--------|
+| HTTPS | Ligado |
+| Host | `credimob.zionsoft.com.br` |
+| Caminho | `/` |
+| Protocolo | `HTTP` |
+| **Porta** | **`3000`** |
+| Caminho (destino) | `/` |
+| **Compose Service** | **`app`** |
+
+**Aba SSL** (obrigatório para domínio próprio): escolha o resolvedor Let's Encrypt do servidor (ex. `letsencrypt`). Sem certificado, o browser pode falhar ou ficar em branco.
+
+**DNS** no registrador (`zionsoft.com.br`):
+
+| Tipo | Nome | Valor |
+|------|------|--------|
+| A | `credimob` | IP público do VPS EasyPanel |
+
+Confirme em [dnschecker.org](https://dnschecker.org) que `credimob.zionsoft.com.br` aponta ao IP certo.
+
+**Ambiente** (compose):
+
+```env
+APP_URL=https://credimob.zionsoft.com.br
+AUTH_SECRET=<32+ caracteres aleatórios>
+```
+
+Salvar domínio → **Implantar** (rebuild após push do código).
+
+**Testes:**
+
+1. `https://credimob.zionsoft.com.br/api/v1/health/live` → JSON `ok: true`
+2. `https://credimob.zionsoft.com.br/login` → formulário de login
+
+Se o domínio EasyPanel (`*.easypanel.host`) abre mas o customizado não → problema é **DNS ou SSL**, não o app.
+
+Nos logs do serviço `app`, deve aparecer `Ready` e **sem** erro após `next start`.
+
 ### Depois que subiu
 
 1. **Domínios** → serviço `app`, porta **3000**.

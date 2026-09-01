@@ -68,6 +68,8 @@ services:
       - "3000"
     environment:
       NODE_ENV: production
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
       DATABASE_URL: postgresql://${POSTGRES_USER:-zioncredit}:${POSTGRES_PASSWORD:-zion_dev_password}@postgres:5432/${POSTGRES_DB:-zion_credit}
       REDIS_URL: redis://redis:6379
       MINIO_ENDPOINT: minio
