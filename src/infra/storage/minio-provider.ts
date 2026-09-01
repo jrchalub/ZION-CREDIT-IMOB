@@ -64,9 +64,25 @@ export class MinioStorageProvider implements StorageProvider {
 
   async getSignedUrl(input: SignedUrlInput): Promise<string> {
     const expires = input.expiresInSeconds ?? 120;
+    const client = this.getSigningClient();
     if (input.method === "PUT") {
-      return this.client.presignedPutObject(this.bucket, input.key, expires);
+      return client.presignedPutObject(this.bucket, input.key, expires);
     }
-    return this.client.presignedGetObject(this.bucket, input.key, expires);
+    return client.presignedGetObject(this.bucket, input.key, expires);
+  }
+
+  /** Presign with public endpoint when MINIO_PUBLIC_ENDPOINT is set. */
+  private getSigningClient(): Minio.Client {
+    const publicEndpoint = process.env.MINIO_PUBLIC_ENDPOINT?.trim();
+    if (!publicEndpoint) return this.client;
+
+    return new Minio.Client({
+      endPoint: publicEndpoint,
+      port: Number(process.env.MINIO_PUBLIC_PORT ?? process.env.MINIO_PORT ?? "9000"),
+      useSSL: process.env.MINIO_PUBLIC_USE_SSL === "true",
+      accessKey: required("MINIO_ACCESS_KEY"),
+      secretKey: required("MINIO_SECRET_KEY"),
+      region: process.env.MINIO_REGION ?? "us-east-1",
+    });
   }
 }

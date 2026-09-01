@@ -196,7 +196,7 @@ export function DocumentReviewPanel({ documentId }: { documentId: string }) {
             />
           ) : (
             <p className="mt-3 text-sm text-slate-500">
-              Clique em &quot;Abrir arquivo&quot; para URL assinada temporária.
+              Clique em &quot;Abrir arquivo&quot; para visualizar o documento.
             </p>
           )}
           {data.classification ? (

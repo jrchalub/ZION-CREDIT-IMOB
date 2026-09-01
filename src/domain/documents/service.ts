@@ -280,12 +280,57 @@ export async function getDocumentForTenant(
   return row;
 }
 
+function documentContentPath(documentId: string) {
+  return `/api/v1/documents/${documentId}/content`;
+}
+
+function usePresignedPublicUrls() {
+  return Boolean(process.env.MINIO_PUBLIC_ENDPOINT?.trim());
+}
+
+export async function streamDocumentContent(
+  session: SessionPayload,
+  documentId: string,
+  meta?: { ip?: string | null; userAgent?: string | null; correlationId?: string },
+) {
+  const { document } = await getDocumentForTenant(session, documentId);
+  const storage = getStorageProvider();
+  const body = await storage.getObject(document.storageKey);
+
+  await writeAuditLog({
+    tenantId: session.tenantId,
+    userId: session.sub,
+    action: "VIEW",
+    entity: "document",
+    entityId: documentId,
+    newValue: { mode: "proxy" },
+    ip: meta?.ip,
+    userAgent: meta?.userAgent,
+    correlationId: meta?.correlationId,
+  });
+
+  return {
+    body,
+    mimeType: document.mimeType,
+    filename: document.originalFilename,
+  };
+}
+
 export async function createDocumentViewUrl(
   session: SessionPayload,
   documentId: string,
   meta?: { ip?: string | null; userAgent?: string | null; correlationId?: string },
 ) {
   const { document } = await getDocumentForTenant(session, documentId);
+
+  if (!usePresignedPublicUrls()) {
+    return {
+      url: documentContentPath(documentId),
+      mode: "proxy" as const,
+      mimeType: document.mimeType,
+    };
+  }
+
   const storage = getStorageProvider();
   const url = await storage.getSignedUrl({
     key: document.storageKey,
@@ -299,13 +344,18 @@ export async function createDocumentViewUrl(
     action: "VIEW",
     entity: "document",
     entityId: documentId,
-    newValue: { expiresInSeconds: 120 },
+    newValue: { mode: "presigned", expiresInSeconds: 120 },
     ip: meta?.ip,
     userAgent: meta?.userAgent,
     correlationId: meta?.correlationId,
   });
 
-  return { url, expiresInSeconds: 120, mimeType: document.mimeType };
+  return {
+    url,
+    mode: "presigned" as const,
+    expiresInSeconds: 120,
+    mimeType: document.mimeType,
+  };
 }
 
 export async function reviewDocument(

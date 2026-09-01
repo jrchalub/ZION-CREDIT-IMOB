@@ -501,7 +501,7 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
       {viewerUrl ? (
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="font-serif text-lg">Visualizador (URL assinada temporária)</h3>
+            <h3 className="font-serif text-lg">Visualizador de documento</h3>
             <button
               type="button"
               className="text-sm text-slate-600 hover:underline"
@@ -524,7 +524,7 @@ export function ProcessDocumentsPanel({ processId }: { processId: string }) {
             />
           )}
           <p className="mt-2 text-xs text-slate-500">
-            URL expira em ~2 minutos. Nunca é pública permanente.
+            Visualização autenticada pelo aplicativo. O arquivo não fica público no storage.
           </p>
         </section>
       ) : null}
