@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
+  UserCog,
   Users,
 } from "lucide-react";
 import type { UserRole } from "@/domain/rbac/permissions";
@@ -19,6 +20,7 @@ const ICONS = {
   "/clients": Users,
   "/processes": ClipboardList,
   "/audit": FileSearch,
+  "/users": UserCog,
   "/settings": Settings,
 } as const;
 
