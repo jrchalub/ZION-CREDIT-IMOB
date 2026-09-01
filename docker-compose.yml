@@ -84,6 +84,7 @@ services:
       APP_URL: ${APP_URL:-http://localhost:3000}
       RUN_MIGRATIONS: "true"
       SEED_CATALOG: ${SEED_CATALOG:-true}
+      ALLOW_DEMO_SEED: ${ALLOW_DEMO_SEED:-false}
       AI_PROVIDER: ${AI_PROVIDER:-mock}
       OCR_PROVIDER: ${OCR_PROVIDER:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}

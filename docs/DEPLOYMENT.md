@@ -74,7 +74,10 @@ Confirme em [dnschecker.org](https://dnschecker.org) que `credimob.zionsoft.com.
 ```env
 APP_URL=https://credimob.zionsoft.com.br
 AUTH_SECRET=<32+ caracteres aleatórios>
+ALLOW_DEMO_SEED=true
 ```
+
+`ALLOW_DEMO_SEED=true` só na **primeira** implantação ou quando precisar recriar dados demo; remova depois.
 
 Salvar domínio → **Implantar** (rebuild após push do código).
 
@@ -91,7 +94,12 @@ Nos logs do serviço `app`, deve aparecer `Ready` e **sem** erro após `next sta
 
 1. **Domínios** → serviço `app`, porta **3000**.
 2. **Ambiente**: `AUTH_SECRET`, `APP_URL` (URL pública com `https://`).
-3. **Login**: em produção não há usuário demo por padrão. Para testar, defina `ALLOW_DEMO_SEED=true` e redeploy (ou crie usuário depois). Demo: `admin@zioncredit.demo` / `Zion@Demo123`.
+3. **Login / seed demo**: em produção o entrypoint só sincroniza o **catálogo** de documentos — **não** cria tenant nem usuários. Para o primeiro login de teste:
+   - Na aba **Ambiente** do compose, adicione `ALLOW_DEMO_SEED=true`
+   - **Implantar** (reinicia o `app`; o seed roda no startup)
+   - Nos logs do `app`, confirme mensagens como `Tenant data` / `admin@zioncredit.demo` (não só `catálogo sincronizado`)
+   - Credenciais: `admin@zioncredit.demo` / `Zion@Demo123`
+   - Depois do primeiro login de teste, remova `ALLOW_DEMO_SEED` ou defina `false` e redeploy (segurança)
 4. **Health**: `https://seudominio/api/v1/health/live` (público).
 
 Aviso Redis `Memory overcommit` no host: opcional `sysctl vm.overcommit_memory=1` no VPS (não bloqueia o app).
