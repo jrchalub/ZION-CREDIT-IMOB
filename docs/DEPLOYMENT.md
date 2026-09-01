@@ -20,11 +20,23 @@ pnpm dev
 
 Secrets apenas via variáveis de ambiente.
 
-## EasyPanel / Docker (GitHub)
+## EasyPanel (stack completo)
 
-O `pnpm` 11 recusa postinstall nativo (`esbuild`, etc.) se não estiver na allowlist. Isso está em `package.json` → `pnpm.onlyBuiltDependencies` e em `.npmrc`.
+Não use só o **Dockerfile** no EasyPanel: isso sobe apenas o Next.js e **não** instala Postgres, Redis nem MinIO.
 
-No EasyPanel, após o push, use o **Dockerfile** do repositório (não Nixpacks). Variáveis reais (`DATABASE_URL`, `REDIS_URL`, `AUTH_SECRET`, MinIO, etc.) vão no serviço em **runtime**, não precisam existir no momento do `docker build`.
+Crie o serviço como **Docker Compose** apontando para `docker-compose.yml`. Sobe junto:
+
+| Serviço | Função |
+|---------|--------|
+| `postgres` | Banco |
+| `redis` | Cache e filas |
+| `minio` + `minio-init` | Arquivos |
+| `app` | UI + API (porta 3000) + migrate na subida |
+| `workers` | OCR / análise financeira |
+
+Defina `AUTH_SECRET` (≥32 caracteres, não use o exemplo) e `APP_URL` (URL pública). O compose já liga `DATABASE_URL` / `REDIS_URL` / MinIO aos containers internos.
+
+O pnpm 11 exige `allowBuilds` em `pnpm-workspace.yaml` (não em `package.json`). Sem isso o build falha com `ERR_PNPM_IGNORED_BUILDS`.
 
 ## Go-live (FASE 8)
 
@@ -36,10 +48,10 @@ pnpm db:migrate
 pnpm db:catalog             # catálogo de documentos; sem usuários demo em produção
 ```
 
-Subir app + workers (infra no `docker-compose.yml`):
+Subir o stack completo (app + workers + postgres + redis + minio):
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+pnpm stack:up
 ```
 
 Processos:

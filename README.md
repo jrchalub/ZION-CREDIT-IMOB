@@ -62,7 +62,7 @@ Acesse: [http://localhost:3000](http://localhost:3000)
 | `pnpm db:migrate` | Aplica migrations |
 | `pnpm db:seed` | Dados demo |
 | `pnpm setup` | up + migrate + seed |
-| `pnpm workers` | Workers BullMQ (document-processing + financial-analysis) |
+| `pnpm stack:up` | Sobe Postgres + Redis + MinIO + app + workers |
 | `pnpm go-live:check` | Valida env de produção (`NODE_ENV=production`) |
 | `pnpm db:catalog` | Upsert catálogo (em produção não cria usuários demo) |
 

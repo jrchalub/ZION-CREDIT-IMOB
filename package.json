@@ -17,8 +17,9 @@
     "db:seed": "tsx src/db/seed.ts",
     "db:up": "docker compose up -d postgres redis minio minio-init",
     "db:down": "docker compose down",
-    "infra:up": "docker compose up -d",
-    "infra:reset": "docker compose down -v && docker compose up -d",
+    "infra:up": "docker compose up -d postgres redis minio minio-init",
+    "infra:reset": "docker compose down -v && docker compose up -d postgres redis minio minio-init",
+    "stack:up": "docker compose up -d --build",
     "setup": "pnpm db:up && pnpm db:migrate && pnpm db:seed",
     "infra:check": "tsx src/scripts/check-infra.ts",
     "workers": "tsx src/workers/run-workers.ts",
@@ -62,12 +63,5 @@
     "typescript": "^5",
     "vitest": "^4.1.11"
   },
-  "packageManager": "pnpm@11.9.0",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "msgpackr-extract",
-      "unrs-resolver"
-    ]
-  }
+  "packageManager": "pnpm@11.9.0"
 }

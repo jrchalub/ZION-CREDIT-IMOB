@@ -1,9 +1,71 @@
-# Produção / staging: app Next + workers BullMQ.
-# Infra (postgres/redis/minio) continua no docker-compose.yml.
-#
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# Mesmo stack completo que docker-compose.yml (EasyPanel pode apontar para qualquer um).
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: zion-credit-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-zioncredit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zion_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-zion_credit}
+    ports:
+      - "${POSTGRES_PUBLISH_PORT:-5433}:5432"
+    volumes:
+      - zion_credit_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-zioncredit} -d ${POSTGRES_DB:-zion_credit}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: zion-credit-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PUBLISH_PORT:-6379}:6379"
+    volumes:
+      - zion_credit_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: zion-credit-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-zioncredit}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-zion_minio_dev_password}
+    ports:
+      - "${MINIO_PUBLISH_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - zion_credit_minio:/data
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: zion-credit-minio-init
+    depends_on:
+      minio:
+        condition: service_started
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-zioncredit}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-zion_minio_dev_password}
+      MINIO_BUCKET: ${MINIO_BUCKET:-zion-credit-documents}
+    entrypoint: >
+      /bin/sh -c "
+      sleep 3;
+      mc alias set local http://minio:9000 $$MINIO_ACCESS_KEY $$MINIO_SECRET_KEY;
+      mc mb --ignore-existing local/$$MINIO_BUCKET;
+      mc anonymous set none local/$$MINIO_BUCKET;
+      exit 0;
+      "
+
   app:
     build:
       context: .
@@ -11,16 +73,35 @@ services:
     container_name: zion-credit-app
     restart: unless-stopped
     ports:
-      - "3000:3000"
-    env_file:
-      - .env
+      - "${APP_PUBLISH_PORT:-3000}:3000"
     environment:
       NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-zioncredit}:${POSTGRES_PASSWORD:-zion_dev_password}@postgres:5432/${POSTGRES_DB:-zion_credit}
+      REDIS_URL: redis://redis:6379
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: "9000"
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-zioncredit}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-zion_minio_dev_password}
+      MINIO_BUCKET: ${MINIO_BUCKET:-zion-credit-documents}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
+      AUTH_SECRET: ${AUTH_SECRET:-change-me-to-a-long-random-secret-at-least-32-chars}
+      AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME:-zion_session}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      RUN_MIGRATIONS: "true"
+      SEED_CATALOG: ${SEED_CATALOG:-true}
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      OCR_PROVIDER: ${OCR_PROVIDER:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      CRM_WEBHOOK_SECRET: ${CRM_WEBHOOK_SECRET:-}
+      CAIXA_SDK_ENABLED: ${CAIXA_SDK_ENABLED:-false}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio:
+        condition: service_started
     healthcheck:
       test:
         [
@@ -31,7 +112,8 @@ services:
         ]
       interval: 15s
       timeout: 5s
-      retries: 5
+      retries: 8
+      start_period: 40s
 
   workers:
     build:
@@ -40,12 +122,32 @@ services:
     container_name: zion-credit-workers
     restart: unless-stopped
     command: ["pnpm", "workers"]
-    env_file:
-      - .env
     environment:
       NODE_ENV: production
+      RUN_MIGRATIONS: "false"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-zioncredit}:${POSTGRES_PASSWORD:-zion_dev_password}@postgres:5432/${POSTGRES_DB:-zion_credit}
+      REDIS_URL: redis://redis:6379
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: "9000"
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-zioncredit}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-zion_minio_dev_password}
+      MINIO_BUCKET: ${MINIO_BUCKET:-zion-credit-documents}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
+      AUTH_SECRET: ${AUTH_SECRET:-change-me-to-a-long-random-secret-at-least-32-chars}
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      OCR_PROVIDER: ${OCR_PROVIDER:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      CAIXA_SDK_ENABLED: ${CAIXA_SDK_ENABLED:-false}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio:
+        condition: service_started
+
+volumes:
+  zion_credit_pgdata:
+  zion_credit_redis:
+  zion_credit_minio:
