@@ -41,6 +41,19 @@ Isso ocorre quando o serviço está como **App** e, em **Fonte**, o campo **Dock
 
 O `docker-compose.yml` **não** usa `container_name` nem `ports` (exigência do EasyPanel). Desenvolvimento local usa `docker-compose.dev.yml` junto (`pnpm db:up`).
 
+6. **Implantar** — serviços esperados: `postgres`, `redis`, `minio`, `minio-init`, `app`, `workers`.
+
+Logs normais no primeiro deploy: `Migrations complete`, `Ready in …ms`, workers `All workers started`. Os `NOTICE` do Postgres (truncated identifier) são avisos, não erro.
+
+### Depois que subiu
+
+1. **Domínios** → serviço `app`, porta **3000**.
+2. **Ambiente**: `AUTH_SECRET`, `APP_URL` (URL pública com `https://`).
+3. **Login**: em produção não há usuário demo por padrão. Para testar, defina `ALLOW_DEMO_SEED=true` e redeploy (ou crie usuário depois). Demo: `admin@zioncredit.demo` / `Zion@Demo123`.
+4. **Health**: `https://seudominio/api/v1/health/live` (público).
+
+Aviso Redis `Memory overcommit` no host: opcional `sysctl vm.overcommit_memory=1` no VPS (não bloqueia o app).
+
 ### Caminho 2 — App + serviços separados (se não há opção Compose)
 
 1. Serviço `credimob` (App): em **Fonte**, **Dockerfile** = `Dockerfile` (não `docker-compose.yml`).

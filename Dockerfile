@@ -22,18 +22,25 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
 RUN corepack enable && corepack prepare pnpm@11.9.0 --activate
 RUN addgroup -S zion && adduser -S zion -G zion
 
+# Migrations + workers (tsx, drizzle, bullmq)
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=build /app/.next ./.next
-COPY --from=build /app/public ./public
 COPY --from=build /app/package.json ./
 COPY --from=build /app/pnpm-lock.yaml ./
 COPY --from=build /app/pnpm-workspace.yaml ./
 COPY --from=build /app/src ./src
 COPY --from=build /app/tsconfig.json ./
 COPY --from=build /app/next.config.ts ./
+
+# Next.js standalone (app) — não usar `next start`
+COPY --from=build /app/public ./public
+COPY --from=build /app/.next/standalone ./
+COPY --from=build /app/.next/static ./.next/static
+
 COPY --from=build /app/scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
 RUN chmod +x /app/scripts/docker-entrypoint.sh && chown -R zion:zion /app
 
@@ -41,4 +48,4 @@ USER zion
 EXPOSE 3000
 
 ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
-CMD ["pnpm", "start"]
+CMD ["node", "server.js"]
