@@ -1,19 +1,14 @@
-# Stack completo: Postgres + Redis + MinIO + app + workers.
-# Local (só infra para `pnpm dev`):  pnpm db:up
-# Tudo junto:                        pnpm stack:up
-# EasyPanel: tipo Docker Compose, arquivo docker-compose.yml
+# Stack completo — formato EasyPanel (sem container_name / ports publicados).
+# Local: use também docker-compose.dev.yml → pnpm db:up / pnpm stack:up
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: zion-credit-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-zioncredit}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zion_dev_password}
       POSTGRES_DB: ${POSTGRES_DB:-zion_credit}
-    ports:
-      - "${POSTGRES_PUBLISH_PORT:-5433}:5432"
     volumes:
       - zion_credit_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -24,10 +19,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: zion-credit-redis
     restart: unless-stopped
-    ports:
-      - "${REDIS_PUBLISH_PORT:-6379}:6379"
     volumes:
       - zion_credit_redis:/data
     healthcheck:
@@ -38,21 +30,19 @@ services:
 
   minio:
     image: minio/minio:latest
-    container_name: zion-credit-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-zioncredit}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-zion_minio_dev_password}
-    ports:
-      - "${MINIO_PUBLISH_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - zion_credit_minio:/data
+    expose:
+      - "9000"
+      - "9001"
 
   minio-init:
     image: minio/mc:latest
-    container_name: zion-credit-minio-init
     depends_on:
       minio:
         condition: service_started
@@ -73,10 +63,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: zion-credit-app
     restart: unless-stopped
-    ports:
-      - "${APP_PUBLISH_PORT:-3000}:3000"
+    expose:
+      - "3000"
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-zioncredit}:${POSTGRES_PASSWORD:-zion_dev_password}@postgres:5432/${POSTGRES_DB:-zion_credit}
@@ -122,7 +111,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: zion-credit-workers
     restart: unless-stopped
     command: ["pnpm", "workers"]
     environment:

@@ -1,0 +1,28 @@
+# Override local — portas no host para pnpm dev (não usar no EasyPanel).
+services:
+  postgres:
+    container_name: zion-credit-db
+    ports:
+      - "${POSTGRES_PUBLISH_PORT:-5433}:5432"
+
+  redis:
+    container_name: zion-credit-redis
+    ports:
+      - "${REDIS_PUBLISH_PORT:-6379}:6379"
+
+  minio:
+    container_name: zion-credit-minio
+    ports:
+      - "${MINIO_PUBLISH_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+
+  minio-init:
+    container_name: zion-credit-minio-init
+
+  app:
+    container_name: zion-credit-app
+    ports:
+      - "${APP_PUBLISH_PORT:-3000}:3000"
+
+  workers:
+    container_name: zion-credit-workers

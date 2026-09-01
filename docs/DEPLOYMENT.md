@@ -22,21 +22,34 @@ Secrets apenas via variáveis de ambiente.
 
 ## EasyPanel (stack completo)
 
-Não use só o **Dockerfile** no EasyPanel: isso sobe apenas o Next.js e **não** instala Postgres, Redis nem MinIO.
+### Erro comum: `failed to read dockerfile: open docker-compose.yml`
 
-Crie o serviço como **Docker Compose** apontando para `docker-compose.yml`. Sobe junto:
+Isso ocorre quando o serviço está como **App** e, em **Fonte**, o campo **Dockerfile** aponta para `docker-compose.yml`. O EasyPanel tenta `docker build -f docker-compose.yml` — compose **não** é Dockerfile.
 
-| Serviço | Função |
-|---------|--------|
-| `postgres` | Banco |
-| `redis` | Cache e filas |
-| `minio` + `minio-init` | Arquivos |
-| `app` | UI + API (porta 3000) + migrate na subida |
-| `workers` | OCR / análise financeira |
+**Correção:** use um dos caminhos abaixo (não misture).
 
-Defina `AUTH_SECRET` (≥32 caracteres, não use o exemplo) e `APP_URL` (URL pública). O compose já liga `DATABASE_URL` / `REDIS_URL` / MinIO aos containers internos.
+### Caminho 1 — Docker Compose (recomendado: Postgres + Redis + MinIO + app + workers)
 
-O pnpm 11 exige `allowBuilds` em `pnpm-workspace.yaml` (não em `package.json`). Sem isso o build falha com `ERR_PNPM_IGNORED_BUILDS`.
+1. No projeto `zionimob`, **+ Serviço** → tipo **Compose** (não “App”).
+2. Fonte: mesmo repositório GitHub.
+3. Campo do compose: `docker-compose.yml` (campo **Compose file**, não “Dockerfile”).
+4. Aba **Ambiente** — defina pelo menos:
+   - `AUTH_SECRET` (≥32 caracteres, aleatório)
+   - `APP_URL` (URL pública, ex. `https://credimob.seudominio.com`)
+   - `POSTGRES_PASSWORD` e `MINIO_SECRET_KEY` (senhas fortes em produção)
+5. Aba **Domínios**: aponte o domínio ao serviço **`app`**, porta **3000** (EasyPanel usa a rede interna; o compose só `expose`, sem `ports`).
+
+O `docker-compose.yml` **não** usa `container_name` nem `ports` (exigência do EasyPanel). Desenvolvimento local usa `docker-compose.dev.yml` junto (`pnpm db:up`).
+
+### Caminho 2 — App + serviços separados (se não há opção Compose)
+
+1. Serviço `credimob` (App): em **Fonte**, **Dockerfile** = `Dockerfile` (não `docker-compose.yml`).
+2. No mesmo projeto, crie **PostgreSQL**, **Redis** e **MinIO** (templates do EasyPanel).
+3. Em **Ambiente** do `credimob`, configure `DATABASE_URL`, `REDIS_URL`, `MINIO_*` (hosts internos: `postgres`, `redis`, `minio`).
+4. Crie outro App **workers** com o mesmo build, comando `pnpm workers`.
+5. Variáveis obrigatórias no app — ver `.env.example`.
+
+O pnpm 11 exige `allowBuilds` em `pnpm-workspace.yaml`. Sem isso o build falha com `ERR_PNPM_IGNORED_BUILDS`.
 
 ## Go-live (FASE 8)
 
