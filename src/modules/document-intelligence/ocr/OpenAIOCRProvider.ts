@@ -2,21 +2,27 @@ import type { OCRInput, OCRProvider, OCRResult } from "./OCRProvider";
 import { MockOCRProvider, extractNativePdfText } from "./MockOCRProvider";
 import { PROMPT_VERSIONS } from "../prompts/versions";
 import { visionMimeFromDocument } from "./ocr-provider-select";
+import {
+  getOpenAICompatApiKey,
+  getOpenAICompatOcrModel,
+  openAICompatChatCompletion,
+  parseJsonFromModelContent,
+} from "../providers/openai-compat";
 
 /**
- * Vision OCR via OpenAI. Native PDF text still preferred (no cost).
- * Scanned PDFs without extractable text are not rasterized here — review humana.
+ * Vision OCR via OpenAI-compatible API (OpenAI / OpenRouter).
+ * Native PDF text still preferred (no cost).
  */
 export class OpenAIOCRProvider implements OCRProvider {
   readonly name = "openai-ocr";
   private readonly fallback = new MockOCRProvider();
 
   private get apiKey() {
-    return process.env.OPENAI_API_KEY?.trim() || "";
+    return getOpenAICompatApiKey();
   }
 
   private get model() {
-    return process.env.OPENAI_OCR_MODEL || process.env.OPENAI_MODEL || "gpt-4o-mini";
+    return getOpenAICompatOcrModel();
   }
 
   async extractText(input: OCRInput): Promise<OCRResult> {
@@ -57,47 +63,35 @@ export class OpenAIOCRProvider implements OCRProvider {
     }
 
     const dataUrl = `data:${visionMime};base64,${input.buffer.toString("base64")}`;
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: this.model,
-        messages: [
-          {
-            role: "system",
-            content:
-              "Transcribe all readable text from this Brazilian identity/financial document. Return JSON {text, pages, confidence}. Do not invent missing numbers.",
-          },
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify({ filename: input.filename, promptVersion: PROMPT_VERSIONS.ocrVision }),
-              },
-              { type: "image_url", image_url: { url: dataUrl } },
-            ],
-          },
-        ],
-      }),
+    const { content } = await openAICompatChatCompletion({
+      model: this.model,
+      messages: [
+        {
+          role: "system",
+          content:
+            "Transcribe all readable text from this Brazilian identity/financial document. Return JSON {text, pages, confidence}. Do not invent missing numbers.",
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                filename: input.filename,
+                promptVersion: PROMPT_VERSIONS.ocrVision,
+              }),
+            },
+            { type: "image_url", image_url: { url: dataUrl } },
+          ],
+        },
+      ],
     });
 
-    if (!response.ok) {
-      throw new Error(`OPENAI_OCR_FAILED:${response.status}`);
-    }
-
-    const json = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const content = json.choices?.[0]?.message?.content ?? "";
     let text = content;
     let pages = 1;
     let confidence = 0.85;
     try {
-      const parsed = JSON.parse(content) as {
+      const parsed = parseJsonFromModelContent(content) as {
         text?: string;
         pages?: number;
         confidence?: number;
